@@ -1,4 +1,5 @@
 using Core.DTOs;
+using Core.Entities;
 using System.Globalization;
 
 namespace WPF.Mappers
@@ -6,6 +7,7 @@ namespace WPF.Mappers
     public interface IVisitMapper
     {
         string ToDisplayString(VisitDto visit);
+        string ToDisplayString(Visit visit);
     }
 
     public class VisitMapper : IVisitMapper
@@ -18,11 +20,18 @@ namespace WPF.Mappers
             return $"📅 {date}\n🩺 {diagnosis}{notes}";
         }
 
-        public VisitCreateDto CreateVisitDto(int patientId, string diagnosis, string notes,
-            string temperature, string bpSystolic, string bpDiastolic,
-            string gravida, string para, string abortion)
+        public string ToDisplayString(Visit v)
         {
-            // Validation could go here too, or stay in the service
+            var date = v.StartedAt.ToString("dd MMM yyyy", CultureInfo.InvariantCulture);
+            var diagnosis = string.IsNullOrWhiteSpace(v.PresentingSymptomText) ? "No diagnosis" : v.PresentingSymptomText;
+            var notes = string.IsNullOrWhiteSpace(v.ShortNote) ? string.Empty : $"\n📝 {v.ShortNote}";
+            return $"📅 {date}\n🩺 {diagnosis}{notes}";
+        }
+
+        public VisitCreateDto CreateVisitDto(int patientId, string diagnosis, string notes,
+            string temperature, string bpSystolic, string bpDiastolic)
+        {
+
             if (patientId == 0)
                 throw new ArgumentException("Patient ID is required");
 
@@ -37,10 +46,7 @@ namespace WPF.Mappers
                 Notes = notes,
                 Temperature = SafeParseDecimal(temperature),
                 BloodPressureSystolic = SafeParseInt(bpSystolic),
-                BloodPressureDiastolic = SafeParseInt(bpDiastolic),
-                Gravida = SafeParseInt(gravida),
-                Para = SafeParseInt(para),
-                Abortion = SafeParseInt(abortion)
+                BloodPressureDiastolic = SafeParseInt(bpDiastolic)
             };
         }
 

@@ -1,15 +1,9 @@
 ﻿using Core.DTOs;
 using Core.Interfaces.Services;
-using Core.Services;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
 using System.ComponentModel;
-using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
 using System.Windows;
-using WPF.Views;
 
 namespace WPF.ViewModels
 {
@@ -43,8 +37,8 @@ namespace WPF.ViewModels
         // Collections
         private List<TestCatalogDto> _availableTests = new();
         private List<DrugCatalogDto> _availableDrugs = new();
-        private List<Core.DTOs.LabResultItem> _labResults = new();
-        private List<Core.DTOs.PrescriptionItem> _prescriptions = new();
+        private List<LabResultEntry> _labResults = new();
+        private List<PrescriptionEntry> _prescriptions = new();
 
         // Selected items
         private TestCatalogDto? _selectedLabTest;
@@ -184,13 +178,13 @@ namespace WPF.ViewModels
             set { _availableDrugs = value; OnPropertyChanged(); }
         }
 
-        public List<Core.DTOs.LabResultItem> LabResults
+        public List<LabResultEntry> LabResults
         {
             get => _labResults;
             set { _labResults = value; OnPropertyChanged(); }
         }
 
-        public List<Core.DTOs.PrescriptionItem> Prescriptions
+        public List<PrescriptionEntry> Prescriptions
         {
             get => _prescriptions;
             set { _prescriptions = value; OnPropertyChanged(); }
@@ -259,7 +253,7 @@ namespace WPF.ViewModels
         {
             if (SelectedLabTest != null && !string.IsNullOrWhiteSpace(LabResultValue))
             {
-                var newResult = new Core.DTOs.LabResultItem
+                var newResult = new LabResultEntry
                 {
                     TestId = SelectedLabTest.TestId,
                     TestName = SelectedLabTest.TestName,
@@ -269,7 +263,7 @@ namespace WPF.ViewModels
                 };
 
                 LabResults.Add(newResult);
-                LabResults = new List<Core.DTOs.LabResultItem>(LabResults);
+                LabResults = new List<LabResultEntry>(LabResults);
                 LabResultValue = string.Empty;
                 SelectedLabTest = null;
                 StatusMessage = "Lab result added";
@@ -278,10 +272,10 @@ namespace WPF.ViewModels
 
         public void RemoveLabResult(object item)
         {
-            if (item is Core.DTOs.LabResultItem result)
+            if (item is LabResultEntry result)
             {
                 LabResults.Remove(result);
-                LabResults = new List<Core.DTOs.LabResultItem>(LabResults);
+                LabResults = new List<LabResultEntry>(LabResults);
                 StatusMessage = "Lab result removed";
             }
         }
@@ -290,7 +284,7 @@ namespace WPF.ViewModels
         {
             if (SelectedDrug != null && !string.IsNullOrWhiteSpace(Dosage))
             {
-                var newPrescription = new Core.DTOs.PrescriptionItem
+                var newPrescription = new PrescriptionEntry
                 {
                     DrugId = SelectedDrug.DrugId,
                     DrugName = SelectedDrug.BrandName,
@@ -299,7 +293,7 @@ namespace WPF.ViewModels
                 };
 
                 Prescriptions.Add(newPrescription);
-                Prescriptions = new List<Core.DTOs.PrescriptionItem>(Prescriptions);
+                Prescriptions = new List<PrescriptionEntry>(Prescriptions);
                 Dosage = string.Empty;
                 SelectedDrug = null;
                 StatusMessage = "Prescription added";
@@ -308,10 +302,10 @@ namespace WPF.ViewModels
 
         public void RemovePrescription(object item)
         {
-            if (item is Core.DTOs.PrescriptionItem prescription)
+            if (item is PrescriptionEntry prescription)
             {
                 Prescriptions.Remove(prescription);
-                Prescriptions = new List<Core.DTOs.PrescriptionItem>(Prescriptions);
+                Prescriptions = new List<PrescriptionEntry>(Prescriptions);
                 StatusMessage = "Prescription removed";
             }
         }
@@ -355,26 +349,11 @@ namespace WPF.ViewModels
                     Para = Para,
                     Abortion = Abortion,
                     LMPDate = LMPDate,
-                    SaveType = VisitSaveType.New,
-                    LabResults = LabResults.Select(l => new LabResultItem
-                    {
-                        TestId = l.TestId,
-                        TestName = l.TestName,
-                        ResultValue = l.ResultValue,
-                        TestUnit = l.TestUnit,
-                        NormalRange = l.NormalRange
-                    }).ToList(),
-                    Prescriptions = Prescriptions.Select(p => new PrescriptionItem
-                    {
-                        DrugId = p.DrugId,
-                        DrugName = p.DrugName,
-                        Dosage = p.Dosage,
-                        Form = p.Form
-                    }).ToList()
+                    SaveType = VisitSaveType.New
                 };
 
                 // Use VisitService which handles everything
-                var result = await _visitService.EndVisitAsync(request);
+                var result = await _visitService.SaveVisitAsync(request);
 
                 if (!result.Success)
                 {
@@ -425,6 +404,25 @@ namespace WPF.ViewModels
         #endregion
 
         #region Helper Methods
+
+        public sealed class LabResultEntry
+        {
+            public int TestId { get; set; }
+            public string TestName { get; set; } = string.Empty;
+            public string ResultValue { get; set; } = string.Empty;
+            public string? TestUnit { get; set; }
+            public string? NormalRange { get; set; }
+        }
+
+        public sealed class PrescriptionEntry
+        {
+            public int DrugId { get; set; }
+            public string DrugName { get; set; } = string.Empty;
+            public string Dosage { get; set; } = string.Empty;
+            public string? Form { get; set; }
+        }
+
+
         private async Task LoadTestCatalogAsync(string authToken, ILogger<VisitPageViewModel> logger)
         {
             try

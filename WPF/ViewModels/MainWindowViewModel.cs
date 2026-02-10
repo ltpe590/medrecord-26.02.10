@@ -467,7 +467,7 @@ namespace WPF.ViewModels
                     Notes = "Visit initiated"
                 };
 
-                var result = await _visitService.EndVisitAsync(visitRequest);
+                var result = await _visitService.SaveVisitAsync(visitRequest);
 
                 if (!result.Success || result.VisitId == null)
                     throw new InvalidOperationException(
@@ -541,7 +541,7 @@ namespace WPF.ViewModels
                 };
 
                 // Update the visit in database using your actual service
-                var result = await _visitService.EndVisitAsync(visitRequest);  // This method exists
+                var result = await _visitService.SaveVisitAsync(visitRequest);  // This method exists
 
                 if (!result.Success)
                 {

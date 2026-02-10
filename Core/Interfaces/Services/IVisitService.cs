@@ -9,6 +9,7 @@ namespace Core.Interfaces.Services
         Task<List<PausedVisitDto>> GetPausedVisitsTodayAsync(DateTime clinicTodayUtcStart, DateTime clinicTomorrowUtcStart);
         Task<List<PausedVisitDto>> GetStalePausedVisitsAsync(DateTime clinicTodayUtcStart);
 
+        Task<VisitSaveResult> SaveVisitAsync(VisitSaveRequest request);
         Task SaveObGyneGpaAsync(int visitId, DTOs.ObGyne.GPADto gpa);
 
         Task PauseVisitAsync(int visitId);

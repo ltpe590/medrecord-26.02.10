@@ -1,6 +1,4 @@
-﻿using Core.Interfaces.Services;
-
-namespace Core.DTOs
+﻿namespace Core.DTOs
 {
     public enum VisitSaveType
     {

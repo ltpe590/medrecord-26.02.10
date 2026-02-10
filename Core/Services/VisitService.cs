@@ -113,6 +113,59 @@ namespace Core.Services
             visit.EndVisit();
             await _db.SaveChangesAsync();
         }
+        public async Task<VisitSaveResult> SaveVisitAsync(VisitSaveRequest request)
+        {
+            try
+            {
+                if (request == null)
+                    return VisitSaveResult.CreateFailure("Visit request is required.");
+
+                if (request.PatientId <= 0)
+                    return VisitSaveResult.CreateFailure("Patient ID is required.");
+
+                var patientExists = await _db.Patients
+                    .AnyAsync(p => p.PatientId == request.PatientId && !p.IsDeleted);
+
+                if (!patientExists)
+                    return VisitSaveResult.CreateFailure("Patient not found.");
+
+                var symptom = string.IsNullOrWhiteSpace(request.Diagnosis) ? "General review" : request.Diagnosis.Trim();
+                var duration = "N/A";
+                var shortNote = string.IsNullOrWhiteSpace(request.Notes) ? "Visit note" : request.Notes.Trim();
+
+                Visit visit;
+
+                if (request.SaveType == VisitSaveType.Edit && (!request.VisitId.HasValue || request.VisitId.Value <= 0))
+                    return VisitSaveResult.CreateFailure("Visit ID is required when editing an existing visit.");
+
+                if (request.VisitId.HasValue && request.VisitId.Value > 0)
+                {
+                    visit = await _db.Visits.FirstOrDefaultAsync(v => v.VisitId == request.VisitId.Value)
+                        ?? throw new InvalidOperationException("Visit not found");
+
+                    visit.UpdatePresentingSymptom(symptom, duration, shortNote);
+                    visit.UpdateVitals(request.Temperature, request.BloodPressureSystolic, request.BloodPressureDiastolic);
+                }
+                else
+                {
+                    visit = new Visit(request.PatientId, symptom, duration, shortNote);
+                    visit.UpdateVitals(request.Temperature, request.BloodPressureSystolic, request.BloodPressureDiastolic);
+                    _db.Visits.Add(visit);
+                }
+
+                if (request.SaveType == VisitSaveType.New)
+                {
+                    visit.EndVisit();
+                }
+
+                await _db.SaveChangesAsync();
+                return VisitSaveResult.CreateSuccess(visit.VisitId, visit.StartedAt);
+            }
+            catch (Exception ex)
+            {
+                return VisitSaveResult.CreateFailure("Failed to save visit", ex);
+            }
+        }
 
         #region Lists Management
         public async Task<Visit?> GetActiveVisitForPatientAsync(int patientId)
