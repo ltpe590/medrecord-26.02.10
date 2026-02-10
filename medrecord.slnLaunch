@@ -1,0 +1,15 @@
+[
+  {
+    "Name": "New Profile",
+    "Projects": [
+      {
+        "Path": "Presentation\\WebApi.csproj",
+        "Action": "Start"
+      },
+      {
+        "Path": "WPF\\WPF.csproj",
+        "Action": "Start"
+      }
+    ]
+  }
+]

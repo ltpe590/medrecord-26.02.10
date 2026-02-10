@@ -1,0 +1,109 @@
+﻿<Window x:Class="WPF.Views.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:helpers="clr-namespace:WPF.Helpers"
+        xmlns:converters="clr-namespace:WPF.Converters"
+        mc:Ignorable="d"
+        Title="Application Settings" 
+        Height="550" 
+        Width="600"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="NoResize">
+
+    <Window.Resources>
+        <converters:StringToBrushConverter x:Key="StringToBrushConverter"/>
+    </Window.Resources>
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <TextBlock Grid.Row="0" Text="Application Settings" FontSize="20" FontWeight="Bold" Margin="0,0,0,20"/>
+
+        <!-- Settings Content -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel>
+                <!-- API Configuration -->
+                <GroupBox Header="API Configuration" Margin="0,0,0,15">
+                    <StackPanel Margin="10">
+                        <Label Content="API Base URL:" Target="{Binding ElementName=TxtApiUrl}"/>
+                        <TextBox x:Name="TxtApiUrl" Text="{Binding ApiBaseUrl, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,10"/>
+
+                        <Label Content="HTTP Timeout (seconds):" Target="{Binding ElementName=TxtTimeout}"/>
+                        <TextBox x:Name="TxtTimeout" Text="{Binding HttpTimeoutSeconds, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,10"/>
+
+                        <CheckBox x:Name="ChkDetailedErrors" Content="Enable detailed error messages" IsChecked="{Binding EnableDetailedErrors}" Margin="0,0,0,10"/>
+                        <CheckBox x:Name="ChkTestAfterSave" Content="Test connection after saving settings" IsChecked="{Binding TestConnectionAfterSave}" Margin="0,0,0,10"/>
+                    </StackPanel>
+                </GroupBox>
+
+                <!-- Connection Test -->
+                <GroupBox Header="Connection Test" Margin="0,0,0,15">
+                    <StackPanel Margin="10">
+                        <TextBlock Text="Test the connection to the API server:" 
+                                   Margin="0,0,0,10" 
+                                   TextWrapping="Wrap"/>
+
+                        <!-- Connection Status Display -->
+                        <Border Background="#F5F5F5" 
+                                CornerRadius="5" 
+                                Padding="10" 
+                                Margin="0,0,0,10">
+                            <StackPanel Orientation="Horizontal">
+                                <Ellipse Width="12" 
+                                         Height="12" 
+                                         Fill="{Binding ConnectionStatusColor, Converter={StaticResource StringToBrushConverter}}"
+                                         Margin="0,0,10,0"/>
+                                <TextBlock Text="{Binding ConnectionStatus}" 
+                                           VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Test Button -->
+                        <Button Content="Test Connection" 
+                                Click="TestConnectionButton_Click" 
+                                IsEnabled="{Binding CanTestConnection}"
+                                Width="120" 
+                                Height="30" 
+                                HorizontalAlignment="Left"/>
+                    </StackPanel>
+                </GroupBox>
+
+                <!-- Default Credentials -->
+                <GroupBox Header="Default Login Credentials" Margin="0,0,0,15">
+                    <StackPanel Margin="10">
+                        <Label Content="Default Username:" Target="{Binding ElementName=TxtDefaultUser}"/>
+                        <TextBox x:Name="TxtDefaultUser" Text="{Binding DefaultUser}" Margin="0,0,0,10"/>
+
+                        <Label Content="Default Password:"/>
+                        <PasswordBox x:Name="TxtDefaultPassword" helpers:PasswordBoxHelper.BoundPassword="{Binding DefaultPassword, Mode=TwoWay}" Margin="0,0,0,10"/>
+
+                        <Label Content="Default Display Name:" Target="{Binding ElementName=TxtDefaultUserName}"/>
+                        <TextBox x:Name="TxtDefaultUserName" Text="{Binding DefaultUserName}" Margin="0,0,0,10"/>
+                    </StackPanel>
+                </GroupBox>
+
+                <!-- Appearance -->
+                <GroupBox Header="Appearance" Margin="0,0,0,15">
+                    <StackPanel Margin="10">
+                        <TextBlock Text="Application theme and visual settings:" Margin="0,0,0,10" TextWrapping="Wrap"/>
+                        <CheckBox Content="Use dark theme (restart required)" IsEnabled="False" Margin="0,0,0,10"/>
+                        <CheckBox Content="Show tooltips" IsChecked="True" IsEnabled="False" Margin="0,0,0,10"/>
+                    </StackPanel>
+                </GroupBox>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Buttons -->
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
+            <Button Content="Save" Click="SaveButton_Click" Width="80" Height="30" Margin="0,0,10,0" Background="#0078D4" Foreground="White"/>
+            <Button Content="Cancel" Click="CancelButton_Click" Width="80" Height="30" Background="#6c757d" Foreground="White"/>
+        </StackPanel>
+    </Grid>
+</Window>
