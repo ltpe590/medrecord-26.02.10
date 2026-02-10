@@ -260,6 +260,7 @@ UpgradeLog*.XML
 UpgradeLog*.htm
 ServiceFabricBackup/
 *.rptproj.bak
+*.bu
 
 # SQL Server files
 *.mdf
@@ -361,8 +362,6 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
-/medrecordwebapi.sln
-/medrecord.sln
 
 # My ignores
 *.txt

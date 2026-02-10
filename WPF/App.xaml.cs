@@ -15,7 +15,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using WPF.Mappers;
-using WPF.Services;
 using WPF.ViewModels;
 using WPF.Views;
 
@@ -88,12 +87,11 @@ namespace WPF
                 var settings = provider.GetRequiredService<IAppSettingsService>();
                 options.UseSqlServer(settings.ConnectionString);
             });
-            services.AddScoped<IPausedVisitService, PausedVisitService>();
-
+            
             // HTTP - FIXED: Only IApiService uses AddHttpClient!
             services.AddHttpClient<IApiService, ApiService>();
             services.AddScoped<IPatientHttpClient, PatientHttpClient>();  // Uses IApiService internally
-            services.AddSingleton<IConnectionService, WPF.Services.ConnectionService>();  // WPF version uses HttpClient
+            services.AddSingleton<IConnectionService, Core.Services.ConnectionService>();
 
             // Repositories
             services.Scan(scan => scan
@@ -150,104 +148,6 @@ namespace WPF
                 Debug.WriteLine($"BuildConfiguration EXCEPTION: {ex.Message}");
                 throw;
             }
-        }
-
-        private static void RegisterAppSettings(IServiceCollection services)
-        {
-            Debug.WriteLine("Registering AppSettings...");
-
-            services.AddSingleton<IAppSettingsService>(provider =>
-            {
-                var config = provider.GetRequiredService<IConfiguration>();
-                var settings = new AppSettings();
-                config.GetSection("AppSettings").Bind(settings);
-                return settings;
-            });
-
-            services.AddSingleton<IAuthSession, AuthSession>();
-        }
-
-        // -----------------------------
-        // Infrastructure
-        // -----------------------------
-        private static void RegisterInfrastructure(IServiceCollection services)
-        {
-            Debug.WriteLine("Registering Infrastructure...");
-
-            services.AddDbContext<ApplicationDbContext>((provider, options) =>
-            {
-                var settings = provider.GetRequiredService<IAppSettingsService>();
-                options.UseSqlServer(settings.ConnectionString);
-            });
-
-            services.AddScoped<IPausedVisitService, PausedVisitService>();
-        }
-
-        // -----------------------------
-        // HTTP
-        // -----------------------------
-        private static void RegisterHttpClients(IServiceCollection services)
-        {
-            Debug.WriteLine("Registering HTTP clients...");
-
-            // ONLY IApiService uses HttpClient directly
-            services.AddHttpClient<IApiService, ApiService>();
-
-            // These use IApiService internally - NO AddHttpClient!
-            services.AddScoped<IPatientHttpClient, PatientHttpClient>();
-            services.AddScoped<IConnectionService, ConnectionService>(); // or AddTransient
-        }
-
-        // -----------------------------
-        // Data & Domain
-        // -----------------------------
-        private static void RegisterRepositories(IServiceCollection services)
-        {
-            Debug.WriteLine("Registering Repositories...");
-
-            services.Scan(scan => scan
-                .FromAssembliesOf(typeof(IPatientRepository), typeof(PatientRepository))
-                .AddClasses(c => c.Where(t => t.Name.EndsWith("Repository")))
-                .AsImplementedInterfaces()
-                .WithScopedLifetime());
-        }
-
-        private static void RegisterCoreServices(IServiceCollection services)
-        {
-            Debug.WriteLine("Registering Core Services...");
-
-            services.Scan(scan => scan
-                .FromAssembliesOf(typeof(IUserService), typeof(UserService))
-                .AddClasses(c => c.Where(t => t.Name.EndsWith("Service")))
-                .AsImplementedInterfaces()
-                .WithScopedLifetime());
-
-            services.AddScoped<IVisitService, VisitService>();
-        }
-
-        // -----------------------------
-        // UI
-        // -----------------------------
-        private static void RegisterUi(IServiceCollection services)
-        {
-            Debug.WriteLine("Registering UI...");
-
-            services.AddSingleton<IConnectionService, ConnectionService>();
-
-            // Windows and ViewModels
-            services.AddTransient<MainWindow>();
-            services.AddTransient<MainWindowViewModel>();
-
-            services.AddTransient<RegisterPatientWindow>();
-            services.AddTransient<RegisterPatientViewModel>();
-
-            services.AddTransient<SettingsWindow>();
-            services.AddTransient<SettingsViewModel>();
-
-            services.AddTransient<VisitPageViewModel>();
-            services.AddTransient<DebugWindow>();
-
-            services.AddSingleton<IVisitMapper, VisitMapper>();
         }
     }
 }

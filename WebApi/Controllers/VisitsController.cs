@@ -49,37 +49,24 @@ namespace WebApi.Controllers
 
         // GET: api/Visits/patient/5
         [HttpGet("patient/{patientId}")]
-        
+        public async Task<ActionResult<IEnumerable<Visit>>> GetVisitsByPatientId(int patientId)
+        {
+            var visits = await _context.Visits
+                .Where(v => v.PatientId == patientId)
+                .OrderByDescending(v => v.StartedAt)
+                .ToListAsync();
+
+            return Ok(visits);
+        }
 
         // PUT: api/Visits/5
         // Updates an existing visit record.
         [HttpPut("{id}")]
         public async Task<IActionResult> PutVisit(int id, Visit visit)
         {
-            if (id != visit.VisitId)
-            {
-                return BadRequest();
-            }
-
-            _context.Entry(visit).State = EntityState.Modified;
-
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!VisitExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
-            }
-
-            return NoContent(); // HTTP 204 No Content
+            _logger.LogWarning("Direct visit updates are disabled. VisitId={VisitId}", id);
+            return StatusCode(StatusCodes.Status405MethodNotAllowed,
+                "Direct visit updates are disabled. Use workflow actions (start/resume/pause/end) via IVisitService.");
         }
 
         // POST: api/Visits
@@ -103,16 +90,9 @@ namespace WebApi.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteVisit(int id)
         {
-            var visit = await _context.Visits.FindAsync(id);
-            if (visit == null)
-            {
-                return NotFound();
-            }
-
-            _context.Visits.Remove(visit);
-            await _context.SaveChangesAsync();
-
-            return NoContent(); // HTTP 204 No Content
+            _logger.LogWarning("Direct visit deletion is disabled. VisitId={VisitId}", id);
+            return StatusCode(StatusCodes.Status405MethodNotAllowed,
+                "Direct visit deletion is disabled. End visits using the visit workflow.");
         }
 
         // Helper method to check if a visit exists

@@ -812,7 +812,13 @@ namespace WPF.ViewModels
         {
             try
             {
-                var pausedVisits = _pausedVisitService.GetPausedVisits();
+                //refactor
+                var now = DateTime.UtcNow;
+                var todayStart = now.Date;
+                var tomorrowStart = todayStart.AddDays(1);
+                var pausedVisits = _visitService.GetPausedVisitsTodayAsync(todayStart, tomorrowStart)
+                    .GetAwaiter()
+                    .GetResult();
 
                 _logger.LogInformation("Loaded {Count} paused visits", pausedVisits?.Count ?? 0);
 

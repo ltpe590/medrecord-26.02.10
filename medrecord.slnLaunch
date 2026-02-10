@@ -3,7 +3,7 @@
     "Name": "New Profile",
     "Projects": [
       {
-        "Path": "Presentation\\WebApi.csproj",
+        "Path": "WebApi\\WebApi.csproj",
         "Action": "Start"
       },
       {
