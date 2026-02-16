@@ -1,6 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 
-namespace WPF.Helpers
+namespace Core.Helpers
 {
     public static class ServiceCollectionExtensions
     {
