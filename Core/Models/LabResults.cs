@@ -17,12 +17,13 @@ namespace Core.Models
 
         [Required]
         public int VisitId { get; set; }
+
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         // Navigation properties
         public virtual Visit? Visit { get; set; }
 
         [ForeignKey("TestId")]
-        public virtual required TestsCatalog TestCatalog { get; set; }
+        public virtual required TestsCatalog TestCatalog { get; set; } 
     }
 }

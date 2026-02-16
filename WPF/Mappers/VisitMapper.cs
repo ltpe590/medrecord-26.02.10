@@ -7,6 +7,7 @@ namespace WPF.Mappers
     public interface IVisitMapper
     {
         string ToDisplayString(VisitDto visit);
+
         string ToDisplayString(Visit visit);
     }
 
@@ -31,7 +32,6 @@ namespace WPF.Mappers
         public VisitCreateDto CreateVisitDto(int patientId, string diagnosis, string notes,
             string temperature, string bpSystolic, string bpDiastolic)
         {
-
             if (patientId == 0)
                 throw new ArgumentException("Patient ID is required");
 

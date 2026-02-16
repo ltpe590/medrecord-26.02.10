@@ -1,5 +1,4 @@
 ﻿using Core.DTOs;
-using Core.Models;
 using FluentValidation;
 
 namespace Core.Validators

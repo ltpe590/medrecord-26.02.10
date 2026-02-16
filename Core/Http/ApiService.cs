@@ -397,6 +397,6 @@ namespace Core.Http
             };
         }
 
-        #endregion
+        #endregion Helper Methods
     }
 }

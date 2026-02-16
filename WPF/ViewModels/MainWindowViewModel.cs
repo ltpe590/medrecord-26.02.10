@@ -10,7 +10,6 @@ using System.Net.Http;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Windows;
-using WPF.Extensions;
 using WPF.Mappers;
 using WPF.Views;
 
@@ -30,6 +29,7 @@ namespace WPF.ViewModels
         #endregion Services and Dependencies
 
         #region Private Fields
+
         private ObservableCollection<PatientViewModel> _patients = new();
         private PatientViewModel? _selectedPatient;
         private List<TestCatalogDto> _availableTests = new();
@@ -64,60 +64,103 @@ namespace WPF.ViewModels
         #region Events
 
         public event Action<string, string>? OnShowErrorMessage;
+
         public event Action<string>? OnShowSuccessMessage;
+
         public event Func<Task>? SaveVisitRequested;
+
         public event Func<Task>? LoginCompleted;
+
         public event Func<Task>? PatientsLoaded;
+
         public event Func<Task>? PatientSelected;
+
         public event PropertyChangedEventHandler? PropertyChanged;
+
         #endregion Events
 
         #region Boolean Properties
-        public bool IsPatientExpanderOpen { get => _isPatientExpanderOpen; set { _isPatientExpanderOpen = value; OnPropertyChanged(); } }
-        public bool IsVisitExpanderOpen { get => _isVisitExpanderOpen; set { _isVisitExpanderOpen = value; OnPropertyChanged(); } }
+
+        public bool IsPatientExpanderOpen
+        { get => _isPatientExpanderOpen; set { _isPatientExpanderOpen = value; OnPropertyChanged(); } }
+        public bool IsVisitExpanderOpen
+        { get => _isVisitExpanderOpen; set { _isVisitExpanderOpen = value; OnPropertyChanged(); } }
         public bool CanAddLabResult => _currentVisitId > 0 && SelectedPatient != null;
         public bool CanSaveVisit => SelectedPatient != null && !string.IsNullOrWhiteSpace(Diagnosis);
+
         #endregion Boolean Properties
 
         #region Public Properties
 
         #region Login Properties
-        public string? Username { get => _username; set { if (_username != value) { _username = value; OnPropertyChanged(); } } }
-        public string? Password { get => _password; set { if (_password != value) { _password = value; OnPropertyChanged(); } } }
-        public string ApiUrl { get => _apiUrl; set { if (_apiUrl != value) { _apiUrl = value; OnPropertyChanged(); } } }
+
+        public string? Username
+        { get => _username; set { if (_username != value) { _username = value; OnPropertyChanged(); } } }
+        public string? Password
+        { get => _password; set { if (_password != value) { _password = value; OnPropertyChanged(); } } }
+        public string ApiUrl
+        { get => _apiUrl; set { if (_apiUrl != value) { _apiUrl = value; OnPropertyChanged(); } } }
+
         #endregion Login Properties
 
         #region Status Properties
-        public string StatusMessage { get => _statusMessage; private set { if (_statusMessage != value) { _statusMessage = value; OnPropertyChanged(nameof(StatusMessage)); } } }
-        public bool SaveButtonEnabled { get => _saveButtonEnabled; set { if (_saveButtonEnabled != value) { _saveButtonEnabled = value; OnPropertyChanged(nameof(SaveButtonEnabled)); } } }
+
+        public string StatusMessage
+        { get => _statusMessage; private set { if (_statusMessage != value) { _statusMessage = value; OnPropertyChanged(nameof(StatusMessage)); } } }
+        public bool SaveButtonEnabled
+        { get => _saveButtonEnabled; set { if (_saveButtonEnabled != value) { _saveButtonEnabled = value; OnPropertyChanged(nameof(SaveButtonEnabled)); } } }
+
         #endregion Status Properties
 
         #region Patient Properties
+
         public ObservableCollection<PatientViewModel> Patients { get; } = new();
-        public PatientViewModel? SelectedPatient { get => _selectedPatient; set { if (_selectedPatient == value) return; _selectedPatient = value; OnPropertyChanged(); } }
-        public string PatientSearchText { get => _patientSearchText; set { if (_patientSearchText != value) { _patientSearchText = value; OnPropertyChanged(nameof(PatientSearchText)); OnPropertyChanged(nameof(FilteredPatients)); } } }
-        public string PatientHistory { get => _patientHistory; private set { if (_patientHistory != value) { _patientHistory = value; OnPropertyChanged(nameof(PatientHistory)); } } }
-        public string SelectedPatientInfo { get => _selectedPatientInfo; private set { if (_selectedPatientInfo != value) { _selectedPatientInfo = value; OnPropertyChanged(nameof(SelectedPatientInfo)); } } }
-        public string SelectedPatientDetails { get => _selectedPatientDetails; private set { if (_selectedPatientDetails != value) { _selectedPatientDetails = value; OnPropertyChanged(nameof(SelectedPatientDetails)); } } }
+        public PatientViewModel? SelectedPatient
+        { get => _selectedPatient; set { if (_selectedPatient == value) return; _selectedPatient = value; OnPropertyChanged(); } }
+        public string PatientSearchText
+        { get => _patientSearchText; set { if (_patientSearchText != value) { _patientSearchText = value; OnPropertyChanged(nameof(PatientSearchText)); OnPropertyChanged(nameof(FilteredPatients)); } } }
+        public string PatientHistory
+        { get => _patientHistory; private set { if (_patientHistory != value) { _patientHistory = value; OnPropertyChanged(nameof(PatientHistory)); } } }
+        public string SelectedPatientInfo
+        { get => _selectedPatientInfo; private set { if (_selectedPatientInfo != value) { _selectedPatientInfo = value; OnPropertyChanged(nameof(SelectedPatientInfo)); } } }
+        public string SelectedPatientDetails
+        { get => _selectedPatientDetails; private set { if (_selectedPatientDetails != value) { _selectedPatientDetails = value; OnPropertyChanged(nameof(SelectedPatientDetails)); } } }
         public IEnumerable<PatientViewModel> FilteredPatients => string.IsNullOrWhiteSpace(PatientSearchText) ? Patients.OrderBy(p => p.Name) : Patients.Where(p => p.Name.Contains(PatientSearchText, StringComparison.OrdinalIgnoreCase) || (p.PhoneNumber?.Contains(PatientSearchText, StringComparison.OrdinalIgnoreCase) == true)).OrderBy(p => p.Name);
+
         #endregion Patient Properties
 
         #region Lab Properties
-        public string LabResultValue { get => _labResultValue; set { if (_labResultValue != value) { _labResultValue = value; OnPropertyChanged(nameof(LabResultValue)); } } }
-        public TestCatalogDto? SelectedTest { get => _selectedTest; set { if (_selectedTest != value) { _selectedTest = value; OnPropertyChanged(nameof(SelectedTest)); } } }
-        public List<TestCatalogDto> AvailableTests { get => _availableTests; set { _availableTests = value; OnPropertyChanged(nameof(AvailableTests)); } }
+
+        public string LabResultValue
+        { get => _labResultValue; set { if (_labResultValue != value) { _labResultValue = value; OnPropertyChanged(nameof(LabResultValue)); } } }
+        public TestCatalogDto? SelectedTest
+        { get => _selectedTest; set { if (_selectedTest != value) { _selectedTest = value; OnPropertyChanged(nameof(SelectedTest)); } } }
+        public List<TestCatalogDto> AvailableTests
+        { get => _availableTests; set { _availableTests = value; OnPropertyChanged(nameof(AvailableTests)); } }
+
         #endregion Lab Properties
 
         #region Visit Properties
-        public string VisitHeaderText { get => _visitHeaderText; set { _visitHeaderText = value; OnPropertyChanged(); } }
-        public string Diagnosis { get => _diagnosis; set { if (_diagnosis != value) { _diagnosis = value; OnPropertyChanged(nameof(Diagnosis)); OnPropertyChanged(nameof(CanSaveVisit)); } } }
-        public string Notes { get => _notes; set { if (_notes != value) { _notes = value; OnPropertyChanged(nameof(Notes)); } } }
-        public decimal Temperature { get => _temperature; set { if (_temperature != value) { _temperature = value; OnPropertyChanged(nameof(Temperature)); } } }
-        public int BPSystolic { get => _bpSystolic; set { if (_bpSystolic != value) { _bpSystolic = value; OnPropertyChanged(nameof(BPSystolic)); } } }
-        public int BPDiastolic { get => _bpDiastolic; set { if (_bpDiastolic != value) { _bpDiastolic = value; OnPropertyChanged(nameof(BPDiastolic)); } } }
-        public int Gravida { get => _gravida; set { if (_gravida != value) { _gravida = value; OnPropertyChanged(nameof(Gravida)); } } }
-        public int Para { get => _para; set { if (_para != value) { _para = value; OnPropertyChanged(nameof(Para)); } } }
-        public int Abortion { get => _abortion; set { if (_abortion != value) { _abortion = value; OnPropertyChanged(nameof(Abortion)); } } }
+
+        public string VisitHeaderText
+        { get => _visitHeaderText; set { _visitHeaderText = value; OnPropertyChanged(); } }
+        public string Diagnosis
+        { get => _diagnosis; set { if (_diagnosis != value) { _diagnosis = value; OnPropertyChanged(nameof(Diagnosis)); OnPropertyChanged(nameof(CanSaveVisit)); } } }
+        public string Notes
+        { get => _notes; set { if (_notes != value) { _notes = value; OnPropertyChanged(nameof(Notes)); } } }
+        public decimal Temperature
+        { get => _temperature; set { if (_temperature != value) { _temperature = value; OnPropertyChanged(nameof(Temperature)); } } }
+        public int BPSystolic
+        { get => _bpSystolic; set { if (_bpSystolic != value) { _bpSystolic = value; OnPropertyChanged(nameof(BPSystolic)); } } }
+        public int BPDiastolic
+        { get => _bpDiastolic; set { if (_bpDiastolic != value) { _bpDiastolic = value; OnPropertyChanged(nameof(BPDiastolic)); } } }
+        public int Gravida
+        { get => _gravida; set { if (_gravida != value) { _gravida = value; OnPropertyChanged(nameof(Gravida)); } } }
+        public int Para
+        { get => _para; set { if (_para != value) { _para = value; OnPropertyChanged(nameof(Para)); } } }
+        public int Abortion
+        { get => _abortion; set { if (_abortion != value) { _abortion = value; OnPropertyChanged(nameof(Abortion)); } } }
+
         #endregion Visit Properties
 
         #endregion Public Properties
@@ -139,18 +182,64 @@ namespace WPF.ViewModels
             _logger = logger;
             _settings = settings;
 
-
             _authToken = "";
             ApiUrl = _settings.ApiBaseUrl ?? "http://localhost:5258";
             _logger.LogInformation("MainWindowViewModel initialized");
 
-            LoadPausedVisits();
-            _ = LoadSettings();
+            // COMMENTED OUT: InitializeAsync was causing UI thread to block
+            // _ = InitializeAsync();
+            _logger.LogInformation("⚠️ InitializeAsync() temporarily disabled to fix window rendering issue");
+        }
+
+        private async Task InitializeAsync()
+        {
+            try
+            {
+                await LoadSettings();
+                LoadPausedVisits();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during initialization");
+            }
         }
 
         #endregion Constructor and Initialization
 
         #region Login Operations
+
+        /// <summary>
+        /// Sets the authentication token from external login (e.g., separate LoginWindow)
+        /// </summary>
+        public async Task SetAuthTokenAndInitializeAsync(string authToken)
+        {
+            try
+            {
+                _logger.LogInformation("=== SetAuthTokenAndInitializeAsync CALLED ===");
+                _logger.LogInformation("   Auth Token Length: {Length}", authToken?.Length ?? 0);
+                
+                _authToken = authToken;
+                StatusMessage = "Loading patients...";
+                
+                _logger.LogInformation("⏳ Loading all patients...");
+                await LoadAllPatientsAsync();
+                
+                _logger.LogInformation("✅ Auth token set and patients loaded");
+                StatusMessage = "Ready";
+                
+                // Trigger LoginCompleted event
+                if (LoginCompleted != null)
+                {
+                    await LoginCompleted.Invoke();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "❌ Error setting auth token and initializing");
+                StatusMessage = "Error loading patients";
+                OnShowErrorMessage?.Invoke("Initialization Error", ex.Message);
+            }
+        }
 
         public async Task LoginAsync(string username, string password, string? apiUrl = null)
         {
@@ -252,6 +341,9 @@ namespace WPF.ViewModels
                     Patients.Add(vm);
                 }
 
+                // Notify that FilteredPatients has changed
+                OnPropertyChanged(nameof(FilteredPatients));
+
                 StatusMessage = $"Loaded {Patients.Count} patients";
                 PatientsLoaded?.Invoke();
             }
@@ -273,8 +365,10 @@ namespace WPF.ViewModels
                 return;
             }
 
-            if (SelectedPatient == patient)
-                return;
+            // REMOVED: Don't return early if patient already selected
+            // We want to allow starting a new visit for the same patient
+            // if (SelectedPatient == patient)
+            //     return;
 
             SelectedPatient = patient;
 
@@ -306,12 +400,12 @@ namespace WPF.ViewModels
             }
         }
 
-
         #endregion Patient Management Operations
 
         #region Visit Operations
 
         #region Lab Methods
+
         public async Task AddLabResultAsync()
         {
             if (SelectedTest == null)
@@ -378,9 +472,11 @@ namespace WPF.ViewModels
                 _logger.LogError(ex, "Error loading test catalog");
             }
         }
+
         #endregion Lab Methods
 
-        # region Visit Methods 
+        # region Visit Methods
+
         private async Task StartVisitIfNotAlreadyStarted(PatientViewModel patient)
         {
             _logger.LogInformation(
@@ -416,6 +512,11 @@ namespace WPF.ViewModels
             catch (Exception ex)
             {
                 _logger.LogError(ex, "❌ Failed to start visit");
+                
+                // Show error to user
+                OnShowErrorMessage?.Invoke("Visit Start Error",
+                    $"Failed to start visit.\n\n{ex.Message}\n\nPlease check that the WebApi is running.");
+                    
                 throw;
             }
             finally
@@ -501,26 +602,37 @@ namespace WPF.ViewModels
 
         public async Task SaveVisitAsync()
         {
+            _logger.LogInformation("=== SaveVisitAsync CALLED ===");
+            _logger.LogInformation("   CurrentVisitId: {VisitId}", _currentVisitId);
+            _logger.LogInformation("   SelectedPatient: {Patient}", SelectedPatient?.Name ?? "NULL");
+            _logger.LogInformation("   Diagnosis: '{Diagnosis}'", Diagnosis);
+            _logger.LogInformation("   AuthToken: {HasToken}", !string.IsNullOrEmpty(_authToken));
+            
             try
             {
                 if (_currentVisitId == 0 || SelectedPatient == null)
                 {
+                    _logger.LogWarning("❌ Validation failed: CurrentVisitId={VisitId}, Patient={Patient}", 
+                        _currentVisitId, SelectedPatient?.Name ?? "NULL");
                     ShowError("No active visit to save.", "Error");
                     return;
                 }
 
                 if (string.IsNullOrWhiteSpace(Diagnosis))
                 {
+                    _logger.LogWarning("❌ Validation failed: Diagnosis is empty");
                     ShowError("Diagnosis is required.", "Validation Error");
                     return;
                 }
 
                 if (string.IsNullOrEmpty(_authToken))
                 {
+                    _logger.LogWarning("❌ Validation failed: No auth token");
                     ShowError("Please login first.", "Authentication Required");
                     return;
                 }
 
+                _logger.LogInformation("✅ All validations passed, proceeding to save...");
                 StatusMessage = "Saving visit...";
 
                 // Create VisitSaveRequest (use your existing DTO)
@@ -583,6 +695,7 @@ namespace WPF.ViewModels
             _currentVisitId = 0;
             StatusMessage = "Ready";
         }
+
         public void PrintVisitSummary(PatientViewModel? selectedPatient)
         {
             if (selectedPatient == null)
@@ -607,7 +720,9 @@ namespace WPF.ViewModels
                 ShowError($"Error creating summary: {ex.Message}", "Print Error");
             }
         }
+
         # endregion Visit Methods
+
         #endregion Visit Operations
 
         #region Settings and Configuration
@@ -668,6 +783,7 @@ namespace WPF.ViewModels
         #region Helper Methods
 
         #region Patient Helpers
+
         private void ClearPatientSelection()
         {
             SelectedPatient = null;
@@ -680,7 +796,7 @@ namespace WPF.ViewModels
         {
             SelectedPatient = patient;
             SelectedPatientInfo = patient.Name;
-            SelectedPatientDetails = $"Age: {patient.Age}, Sex: {patient.Sex ?? "N/A"}";
+            SelectedPatientDetails = $"Age: {patient.Age}, Sex: {patient.SexDisplay}";
         }
 
         private async Task LoadPatientHistoryAsync(int patientId)
@@ -710,11 +826,17 @@ namespace WPF.ViewModels
         private void HandlePatientSelectionError(Exception ex, PatientViewModel patient)
         {
             PatientHistory = "Failed to load visit history.";
-            _logger.LogError(ex, "Error loading patient history for patient {PatientId}", patient.PatientId);
+            _logger.LogError(ex, "Error selecting patient {PatientId}", patient.PatientId);
+            
+            // Show error to user
+            OnShowErrorMessage?.Invoke("Visit Start Error", 
+                $"Failed to start visit for {patient.Name}.\n\n{ex.Message}\n\nPlease check that the WebApi is running and accessible.");
         }
+
         #endregion Patient Helpers
 
         #region Auth Helpers
+
         private void ValidateAuthToken()
         {
             if (string.IsNullOrEmpty(_authToken))
@@ -729,9 +851,11 @@ namespace WPF.ViewModels
             if (!string.IsNullOrEmpty(_authToken))
                 await LoadAllPatientsAsync();
         }
+
         #endregion Auth Helpers
 
         #region Error Helpers
+
         private void ShowError(string message, string title = "Error")
         {
             Application.Current.Dispatcher.Invoke(() =>
@@ -753,15 +877,17 @@ namespace WPF.ViewModels
 
         private void ShowInfo(string message, string title = "Information")
         {
-            // You might want to add an OnShowInfoMessage event  
+            // You might want to add an OnShowInfoMessage event
             Application.Current.Dispatcher.Invoke(() =>
                 MessageBox.Show(message, title, MessageBoxButton.OK, MessageBoxImage.Information));
         }
+
         #endregion Error Helpers
 
         #region Visit Helpers
 
         #region Visit Summary
+
         private string BuildVisitSummary(PatientViewModel patient)
         {
             var sb = new StringBuilder();
@@ -805,29 +931,28 @@ namespace WPF.ViewModels
 
             ShowInfo($"Summary saved to:\n{path}", "Summary Saved");
         }
+
         #endregion Visit Summary
 
         #region Paused Visits Helpers
-        public void LoadPausedVisits()
+
+        public async void LoadPausedVisits()
         {
             try
             {
-                //refactor
-                var now = DateTime.UtcNow;
-                var todayStart = now.Date;
-                var tomorrowStart = todayStart.AddDays(1);
-                var pausedVisits = _visitService.GetPausedVisitsTodayAsync(todayStart, tomorrowStart)
-                    .GetAwaiter()
-                    .GetResult();
+                _logger.LogInformation("Loading paused visits...");
+                
+                // Properly await the async method instead of blocking
+                var pausedVisits = await _visitService.GetPausedVisitsTodayAsync();
 
                 _logger.LogInformation("Loaded {Count} paused visits", pausedVisits?.Count ?? 0);
-
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error loading paused visits");
             }
         }
+
         #endregion Paused Visits Helpers
 
         #endregion Visit Helpers

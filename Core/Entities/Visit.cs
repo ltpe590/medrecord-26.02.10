@@ -1,7 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using Core.Interfaces;
+﻿using Core.Interfaces;
+using Core.Validators;
 
 namespace Core.Entities
 {
@@ -15,6 +13,7 @@ namespace Core.Entities
 
         // Pause as STATE (replaces VisitPause table)
         public DateTime? PausedAt { get; private set; }
+
         public bool IsPaused => PausedAt != null && EndedAt == null;
 
         public string PresentingSymptomText { get; private set; } = null!;
@@ -24,7 +23,8 @@ namespace Core.Entities
         public ICollection<VisitEntry> Entries { get; private set; } = new List<VisitEntry>();
         public Vitals? Vitals { get; private set; }
 
-        protected Visit() { } // EF
+        protected Visit()
+        { } // EF
 
         public Visit(int patientId, string presentingSymptom, string duration, string shortNote)
         {
@@ -35,12 +35,9 @@ namespace Core.Entities
 
         public void UpdatePresentingSymptom(string symptom, string duration, string shortNote)
         {
-            if (string.IsNullOrWhiteSpace(symptom))
-                throw new ArgumentException("Presenting symptom is required.");
-            if (string.IsNullOrWhiteSpace(duration))
-                throw new ArgumentException("Duration is required.");
-            if (string.IsNullOrWhiteSpace(shortNote))
-                throw new ArgumentException("Short note is required.");
+            StringValidator.ValidateNotEmpty(symptom, nameof(symptom));
+            StringValidator.ValidateNotEmpty(duration, nameof(duration));
+            StringValidator.ValidateNotEmpty(shortNote, nameof(shortNote));
 
             PresentingSymptomText = symptom.Trim();
             PresentingSymptomDurationText = duration.Trim();
@@ -82,17 +79,18 @@ namespace Core.Entities
         public void Pause()
         {
             if (EndedAt != null)
-                throw new InvalidOperationException("Cannot pause an ended visit.");
-            if (PausedAt != null)
-                return;
+                throw new InvalidOperationException("Cannot pause a finished visit.");
+
+            if (IsPaused)
+                return; // Already paused
 
             PausedAt = DateTime.UtcNow;
         }
 
         public void Resume()
         {
-            if (PausedAt == null)
-                return;
+            if (!IsPaused)
+                return; // Not paused, nothing to resume
 
             PausedAt = null;
         }
@@ -100,9 +98,9 @@ namespace Core.Entities
         public void EndVisit()
         {
             if (EndedAt != null)
-                return;
+                return; // Already ended
 
-            PausedAt = null;
+            PausedAt = null; // Clear pause state when ending
             EndedAt = DateTime.UtcNow;
         }
     }

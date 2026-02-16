@@ -4,7 +4,9 @@
     {
         string? Token { get; }
         bool IsAuthenticated { get; }
+
         void SetToken(string token);
+
         void Clear();
     }
 }

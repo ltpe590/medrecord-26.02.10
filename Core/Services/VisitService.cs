@@ -1,6 +1,7 @@
 ﻿using Core.Data.Context;
 using Core.DTOs;
 using Core.Entities;
+using Core.Helpers;
 using Core.Interfaces;
 using Core.Interfaces.Services;
 using Microsoft.EntityFrameworkCore;
@@ -29,6 +30,9 @@ namespace Core.Services
             string? duration,
             string? shortNote)
         {
+            ValidationHelpers.ValidatePatientId(patientId);
+            ValidationHelpers.ValidateNotNullOrWhiteSpace(presentingSymptom, nameof(presentingSymptom));
+
             // 1. Active visit
             var activeVisit = await GetActiveVisitForPatientAsync(patientId);
             if (activeVisit != null)
@@ -82,20 +86,23 @@ namespace Core.Services
 
         public async Task PauseVisitAsync(int visitId)
         {
+            ValidationHelpers.ValidateVisitId(visitId);
+
             var visit = await _db.Visits.FindAsync(visitId);
             if (visit == null)
-                throw new InvalidOperationException("Visit not found");
+                throw new InvalidOperationException($"Visit with ID {visitId} not found");
 
             visit.Pause();
             await _db.SaveChangesAsync();
-
         }
 
         public async Task ResumeVisitAsync(int visitId)
         {
+            ValidationHelpers.ValidateVisitId(visitId);
+
             var visit = await _db.Visits.FindAsync(visitId);
             if (visit == null)
-                throw new InvalidOperationException("Visit not found");
+                throw new InvalidOperationException($"Visit with ID {visitId} not found");
 
             visit.Resume();
             await _db.SaveChangesAsync();
@@ -103,9 +110,11 @@ namespace Core.Services
 
         public async Task EndVisitAsync(int visitId)
         {
+            ValidationHelpers.ValidateVisitId(visitId);
+
             var visit = await _db.Visits.FindAsync(visitId);
             if (visit == null)
-                throw new InvalidOperationException("Visit not found");
+                throw new InvalidOperationException($"Visit with ID {visitId} not found");
 
             if (visit.EndedAt != null)
                 return;
@@ -113,6 +122,7 @@ namespace Core.Services
             visit.EndVisit();
             await _db.SaveChangesAsync();
         }
+
         public async Task<VisitSaveResult> SaveVisitAsync(VisitSaveRequest request)
         {
             try
@@ -168,8 +178,11 @@ namespace Core.Services
         }
 
         #region Lists Management
+
         public async Task<Visit?> GetActiveVisitForPatientAsync(int patientId)
         {
+            ValidationHelpers.ValidatePatientId(patientId);
+
             return await _db.Visits
                 .Where(v => v.PatientId == patientId && v.EndedAt == null && v.PausedAt == null)
                 .FirstOrDefaultAsync();
@@ -177,16 +190,19 @@ namespace Core.Services
 
         public async Task<List<Visit>> GetVisitHistoryForPatientAsync(int patientId)
         {
+            ValidationHelpers.ValidatePatientId(patientId);
+
             return await _db.Visits
+                .Include(v => v.Entries)  // Prevent N+1 query
                 .Where(v => v.PatientId == patientId && v.EndedAt != null)
                 .OrderByDescending(v => v.EndedAt)
                 .AsNoTracking()
                 .ToListAsync();
         }
 
-        public async Task<List<PausedVisitDto>> GetPausedVisitsTodayAsync(DateTime clinicTodayUtcStart, DateTime clinicTomorrowUtcStart)
+        public async Task<List<PausedVisitDto>> GetPausedVisitsTodayAsync()
         {
-            (clinicTodayUtcStart, clinicTomorrowUtcStart) = GetClinicDayRangeUtc();
+            var (clinicTodayUtcStart, clinicTomorrowUtcStart) = GetClinicDayRangeUtc();
 
             return await _db.Visits
                 .Join(_db.Patients,
@@ -210,9 +226,9 @@ namespace Core.Services
                 .ToListAsync();
         }
 
-        public async Task<List<PausedVisitDto>> GetStalePausedVisitsAsync(DateTime clinicTodayUtcStart)
+        public async Task<List<PausedVisitDto>> GetStalePausedVisitsAsync()
         {
-            (clinicTodayUtcStart, _) = GetClinicDayRangeUtc();
+            var (clinicTodayUtcStart, _) = GetClinicDayRangeUtc();
 
             return await _db.Visits
                 .Join(_db.Patients,
@@ -238,15 +254,22 @@ namespace Core.Services
         #endregion Lists Management
 
         #region Specialty Sections
+
         #region Ob/Gyn
+
         public async Task SaveObGyneGpaAsync(int visitId, DTOs.ObGyne.GPADto gpa)
         {
+            ValidationHelpers.ValidateVisitId(visitId);
+
+            if (gpa == null)
+                throw new ArgumentNullException(nameof(gpa));
+
             var visit = await _db.Visits
                 .Include(v => v.Entries)
                 .FirstOrDefaultAsync(v => v.VisitId == visitId);
 
             if (visit == null)
-                throw new InvalidOperationException("Visit not found");
+                throw new InvalidOperationException($"Visit with ID {visitId} not found");
 
             var g = gpa.Gravida;
             var p = gpa.Para;
@@ -266,9 +289,11 @@ namespace Core.Services
         }
 
         #endregion Ob/Gyn
+
         #endregion Specialty Sections
 
         #region Helper Methods
+
         private static (DateTime todayStartUtc, DateTime tomorrowStartUtc) GetClinicDayRangeUtc()
         {
             var tz = TimeZoneInfo.FindSystemTimeZoneById("Asia/Baghdad");

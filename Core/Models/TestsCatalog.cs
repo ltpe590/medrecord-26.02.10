@@ -6,6 +6,7 @@ namespace Core.Models
     {
         [Key]
         public int TestId { get; set; }
+
         public required string TestName { get; set; } // e.g., "Complete Blood Count"
         public required string TestUnit { get; set; } // e.g., "mg/dL"
         public required string NormalRange { get; set; } // e.g., "90-140"

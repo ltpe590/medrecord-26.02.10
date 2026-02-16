@@ -17,10 +17,12 @@ namespace Core.Configuration
 
         // Database settings
         public int MaxRetryCount { get; set; } = 3;
+
         public int CommandTimeout { get; set; } = 30;
 
         // Security settings
         public bool EnableFingerprint { get; set; } = false;
+
         public int SessionTimeoutMinutes { get; set; } = 30;
     }
 }

@@ -11,7 +11,9 @@ namespace Core.Exceptions
         public ErrorSeverity Severity { get; init; } = ErrorSeverity.High;
         public ErrorCategory Category { get; init; } = ErrorCategory.Network;
 
-        public ApiException(string message) : base(message) { }
+        public ApiException(string message) : base(message)
+        {
+        }
 
         public ApiException(string message, Exception innerException)
             : base(message, innerException) { }

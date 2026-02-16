@@ -9,7 +9,6 @@
 
         public bool HasPausedVisit { get; init; }
         public int? PausedVisitId { get; init; }
-
     }
 
     public sealed class VisitStartRequestDto

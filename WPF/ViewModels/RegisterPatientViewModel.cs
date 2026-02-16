@@ -1,4 +1,5 @@
 ﻿using Core.DTOs;
+using Core.Entities;
 using Microsoft.Extensions.Logging;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
@@ -19,7 +20,7 @@ namespace WPF.ViewModels
         private string? _allergies;
         private bool _startVisitImmediately;
 
-        #endregion
+        #endregion Fields
 
         #region Properties
 
@@ -129,7 +130,7 @@ namespace WPF.ViewModels
 
         public PatientCreateDto? CreatedPatient { get; private set; }
 
-        #endregion
+        #endregion Properties
 
         #region Constructor
 
@@ -139,7 +140,7 @@ namespace WPF.ViewModels
             _logger.LogInformation("RegisterPatientViewModel initialized");
         }
 
-        #endregion
+        #endregion Constructor
 
         #region Methods
 
@@ -157,7 +158,7 @@ namespace WPF.ViewModels
                 {
                     Name = Name.Trim(),
                     DateOfBirth = DateOnly.FromDateTime(DateOfBirth.Value),
-                    Sex = Sex,
+                    Sex = ParseSex(Sex),  // Convert string to Sex enum
                     PhoneNumber = PhoneNumber,
                     Address = Address,
                     BloodGroup = BloodGroup,
@@ -194,17 +195,35 @@ namespace WPF.ViewModels
             }
         }
 
-        #endregion
+        #endregion Methods
 
         #region Events
 
         public event Action<bool>? RequestClose;
+
         public event PropertyChangedEventHandler? PropertyChanged;
 
         private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
             => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 
-        #endregion
+        #endregion Events
+
+        #region Helper Methods
+
+        private static Core.Entities.Sex ParseSex(string? sexValue)
+        {
+            if (string.IsNullOrWhiteSpace(sexValue))
+                return Core.Entities.Sex.Unknown;
+
+            return sexValue.ToLower() switch
+            {
+                "male" => Core.Entities.Sex.Male,
+                "female" => Core.Entities.Sex.Female,
+                _ => Core.Entities.Sex.Unknown
+            };
+        }
+
+        #endregion Helper Methods
 
         #region IDataErrorInfo Implementation
 
@@ -223,6 +242,6 @@ namespace WPF.ViewModels
             }
         }
 
-        #endregion
+        #endregion IDataErrorInfo Implementation
     }
 }

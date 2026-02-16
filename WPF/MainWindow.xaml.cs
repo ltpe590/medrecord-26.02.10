@@ -1,13 +1,9 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
-using System.ComponentModel;
 using System.Diagnostics;
-using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Animation;
-using WPF.Converters;
 using WPF.Extensions;
 using WPF.ViewModels;
 using WPF.Views;
@@ -19,34 +15,90 @@ namespace WPF
         #region Fields
 
         private readonly MainWindowViewModel _viewModel;
-        #endregion
+        #endregion Fields
 
         #region Constructor
 
         public MainWindow(MainWindowViewModel viewModel)
         {
-            InitializeComponent();
+            Debug.WriteLine("=== MainWindow Constructor START ===");
+            Log("=== MainWindow Constructor START ===");
+            
+            try
+            {
+                Debug.WriteLine("   Calling InitializeComponent()...");
+                Log("   Calling InitializeComponent()...");
+                InitializeComponent();
+                Debug.WriteLine("   ✅ InitializeComponent() completed");
+                Log("   ✅ InitializeComponent() completed");
 
-            _viewModel = viewModel;
-            DataContext = _viewModel;
+                _viewModel = viewModel;
+                DataContext = _viewModel;
+                Debug.WriteLine("   ✅ DataContext set");
+                Log("   ✅ DataContext set");
 
-            _viewModel.OnShowErrorMessage += (title, message) =>
-                MessageBox.Show(message, title, MessageBoxButton.OK, MessageBoxImage.Error);
+                _viewModel.OnShowErrorMessage += (title, message) =>
+                    MessageBox.Show(message, title, MessageBoxButton.OK, MessageBoxImage.Error);
 
-            _viewModel.OnShowSuccessMessage += (message) =>
-                MessageBox.Show(message, "Success", MessageBoxButton.OK, MessageBoxImage.Information);
+                _viewModel.OnShowSuccessMessage += (message) =>
+                    MessageBox.Show(message, "Success", MessageBoxButton.OK, MessageBoxImage.Information);
 
-            SubscribeToViewModelEvents();
-            SetupDefaults();
+                Debug.WriteLine("   ✅ Event handlers subscribed");
+                Log("   ✅ Event handlers subscribed");
+
+                SubscribeToViewModelEvents();
+                Debug.WriteLine("   ✅ ViewModel events subscribed");
+                Log("   ✅ ViewModel events subscribed");
+                
+                // Add Loaded event handler
+                this.Loaded += (s, e) =>
+                {
+                    Debug.WriteLine("=== MainWindow LOADED EVENT FIRED ===");
+                    Log("=== MainWindow LOADED EVENT FIRED ===");
+                    Log($"   ActualWidth: {ActualWidth}, ActualHeight: {ActualHeight}");
+                    Log($"   IsVisible: {IsVisible}, WindowState: {WindowState}");
+                };
+                
+                this.ContentRendered += (s, e) =>
+                {
+                    Debug.WriteLine("=== MainWindow CONTENT RENDERED ===");
+                    Log("=== MainWindow CONTENT RENDERED ===");
+                };
+                
+                // SetupDefaults(); // COMMENTED OUT - Login expander no longer exists
+                
+                Debug.WriteLine("=== MainWindow Constructor COMPLETED ===");
+                Log("=== MainWindow Constructor COMPLETED ===");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"❌ EXCEPTION in MainWindow Constructor: {ex.Message}");
+                Debug.WriteLine($"❌ Stack Trace: {ex.StackTrace}");
+                Log($"❌ EXCEPTION in MainWindow Constructor: {ex.Message}");
+                Log($"❌ Stack Trace: {ex.StackTrace}");
+                throw;
+            }
+        }
+        
+        private static void Log(string message)
+        {
+            var logFile = System.IO.Path.Combine(AppContext.BaseDirectory, "logs", "mainwindow.log");
+            try
+            {
+                System.IO.Directory.CreateDirectory(System.IO.Path.GetDirectoryName(logFile)!);
+                System.IO.File.AppendAllText(logFile, $"[{DateTime.Now:HH:mm:ss.fff}] {message}{Environment.NewLine}");
+            }
+            catch { }
         }
 
-        #endregion
+        #endregion Constructor
 
         #region Initialization
 
         private void SubscribeToViewModelEvents()
         {
-            _viewModel.SaveVisitRequested += OnSaveVisitRequested;
+            // COMMENTED OUT - Old UI elements removed during tab layout redesign
+            // _viewModel.SaveVisitRequested += OnSaveVisitRequested;
             _viewModel.LoginCompleted += OnLoginCompleted;
             _viewModel.PatientsLoaded += OnPatientsLoaded;
             _viewModel.PatientSelected += OnPatientSelected;
@@ -54,35 +106,46 @@ namespace WPF
             _viewModel.OnShowSuccessMessage += ShowSuccessMessage;
         }
 
-        private void SetupDefaults()
+        // SetupDefaults() removed - LoginExpander no longer exists
+        
+        #endregion Initialization
+
+        #region Tab Switching
+
+        private void PatientsTab_Checked(object sender, RoutedEventArgs e)
         {
-            LoginExpander.IsExpanded = true;
-            PatientManagementExpander.IsExpanded = false;
-            VisitManagementExpander.IsExpanded = false;
+            // Show Patients content, hide Visit content
+            if (PatientsTabContent != null && VisitTabContent != null)
+            {
+                PatientsTabContent.Visibility = Visibility.Visible;
+                VisitTabContent.Visibility = Visibility.Collapsed;
+                Debug.WriteLine("✅ Switched to Patients tab");
+            }
         }
 
-        #endregion
+        private void VisitTab_Checked(object sender, RoutedEventArgs e)
+        {
+            // Show Visit content, hide Patients content
+            if (PatientsTabContent != null && VisitTabContent != null)
+            {
+                PatientsTabContent.Visibility = Visibility.Collapsed;
+                VisitTabContent.Visibility = Visibility.Visible;
+                Debug.WriteLine("✅ Switched to Visit tab");
+            }
+        }
+
+        #endregion Tab Switching
 
         #region Event Handlers
 
-        private async void LoginButton_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                await _viewModel.LoginAsync(
-                    TxtUsername.Text,
-                    TxtPassword.Password);
-            }
-            catch
-            {
-                // Errors are already handled in ViewModel
-            }
-        }
+        // LoginButton_Click removed - login now happens in separate LoginWindow
+        // private async void LoginButton_Click(object sender, RoutedEventArgs e) { ... }
 
         private async void RefreshPatientsButton_Click(object sender, RoutedEventArgs e)
         {
             await _viewModel.LoadAllPatientsAsync();
         }
+        
         private void TxtPatientSearch_TextChanged(object sender, TextChangedEventArgs e)
         {
             _viewModel.PatientSearchText = TxtPatientSearch.Text;
@@ -102,38 +165,78 @@ namespace WPF
 
         private async void PatientListBox_MouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
-            if (DataContext is not MainWindowViewModel vm)
+            try
             {
-                Debug.WriteLine("❌ DoubleClick: DataContext is not MainWindowViewModel");
-                return;
-            }
+                if (DataContext is not MainWindowViewModel vm)
+                {
+                    Debug.WriteLine("❌ DoubleClick: DataContext is not MainWindowViewModel");
+                    return;
+                }
 
-            if (vm.SelectedPatient == null)
+                if (vm.SelectedPatient == null)
+                {
+                    Debug.WriteLine("❌ DoubleClick: SelectedPatient is NULL");
+                    return;
+                }
+
+                Debug.WriteLine($"✅ DoubleClick: Starting visit for {vm.SelectedPatient.Name}");
+
+                // Switch to Visit tab
+                VisitTabButton.IsChecked = true;
+                
+                // SelectPatientAsync will start visit automatically
+                await vm.SelectPatientAsync(vm.SelectedPatient);
+
+                Debug.WriteLine($"✅ DoubleClick: Visit started successfully");
+            }
+            catch (Exception ex)
             {
-                Debug.WriteLine("❌ DoubleClick: SelectedPatient is NULL");
-                return;
+                Debug.WriteLine($"❌ DoubleClick EXCEPTION: {ex.GetType().Name}");
+                Debug.WriteLine($"❌ Message: {ex.Message}");
+                Debug.WriteLine($"❌ Stack Trace: {ex.StackTrace}");
+                MessageBox.Show($"Error starting visit:\n\n{ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
-
-            Debug.WriteLine($"✅ DoubleClick: Patient {vm.SelectedPatient.PatientId} selected");
-
-            await vm.SelectPatientAsync(vm.SelectedPatient);
         }
-
 
         private async void SaveVisitButton_Click(object sender, RoutedEventArgs e)
         {
-            await _viewModel.SaveVisitAsync();
+            Debug.WriteLine("=== SAVE VISIT BUTTON CLICKED ===");
+            try
+            {
+                await _viewModel.SaveVisitAsync();
+                Debug.WriteLine("✅ SaveVisitAsync completed successfully");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"❌ SaveVisitAsync EXCEPTION: {ex.Message}");
+                MessageBox.Show($"Error saving visit:\n\n{ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
+
+        // TODO: Add these methods to MainWindowViewModel
+        private void CompleteVisitButton_Click(object sender, RoutedEventArgs e)
+        {
+            MessageBox.Show("Complete Visit - Feature coming soon!", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private void PauseVisitButton_Click(object sender, RoutedEventArgs e)
+        {
+            MessageBox.Show("Pause Visit - Feature coming soon!", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        // END COMMENTED OUT SECTION
 
         private async void AddNewPatientButton_Click(object sender, RoutedEventArgs e)
         {
             await ShowNewPatientDialogAsync();
         }
 
-        #endregion
+        #endregion Event Handlers
 
         #region ViewModel Event Handlers
 
+        // COMMENTED OUT - Old UI elements removed during tab layout redesign
+        /*
         private async Task OnSaveVisitRequested()
         {
             await Dispatcher.InvokeAsync(() =>
@@ -149,12 +252,13 @@ namespace WPF
                 });
             });
         }
+        */
 
         private async Task OnLoginCompleted()
         {
             await Dispatcher.InvokeAsync(() =>
             {
-                StatusText.Text = "Login successful";
+                // StatusText.Text = "Login successful"; // Removed - StatusText no longer exists
                 MessageBox.Show("Login successful!", "Success",
                     MessageBoxButton.OK, MessageBoxImage.Information);
             });
@@ -164,7 +268,8 @@ namespace WPF
         {
             await Dispatcher.InvokeAsync(() =>
             {
-                StatusText.Text = $"Loaded {_viewModel.Patients.Count} patients";
+                // StatusText.Text = $"Loaded {_viewModel.Patients.Count} patients"; // Removed - StatusText no longer exists
+                Debug.WriteLine($"✅ Loaded {_viewModel.Patients.Count} patients");
             });
         }
 
@@ -172,12 +277,8 @@ namespace WPF
         {
             await Dispatcher.InvokeAsync(() =>
             {
-                if (_viewModel.SelectedPatient != null)
-                {
-                    SelectedPatientInfo.Text = _viewModel.SelectedPatientInfo;
-                    SelectedPatientDetails.Text = _viewModel.SelectedPatientDetails;
-                    HistoryTextBlock.Text = _viewModel.PatientHistory;
-                }
+                // Patient details will automatically update via binding
+                Debug.WriteLine($"✅ Patient selected: {_viewModel.SelectedPatient?.Name}");
             });
         }
 
@@ -192,7 +293,7 @@ namespace WPF
             Dispatcher.Invoke(() =>
                 MessageBox.Show(message, "Success", MessageBoxButton.OK, MessageBoxImage.Information));
         }
-        #endregion
+        #endregion ViewModel Event Handlers
 
         #region UI Methods
 
@@ -200,7 +301,6 @@ namespace WPF
         {
             try
             {
-
                 var vm = App.Services.GetRequiredService<RegisterPatientViewModel>();
                 var window = new RegisterPatientWindow(vm)
                 {
@@ -213,14 +313,33 @@ namespace WPF
 
                     if (vm.StartVisitImmediately && vm.CreatedPatient != null)
                     {
-                        await _viewModel.LoadAllPatientsAsync();
+                        // Wait a moment for database connection to fully close
+                        await Task.Delay(100);
+                        
+                        // AddNewPatientAsync already calls LoadAllPatientsAsync, so patients are already refreshed
                         var newPatient = _viewModel.Patients
                             .OrderByDescending(p => p.PatientId)
                             .FirstOrDefault(p =>
                                 p.Name.Equals(vm.CreatedPatient.Name, StringComparison.OrdinalIgnoreCase));
 
                         if (newPatient != null)
-                            StartVisitForPatient(newPatient);
+                        {
+                            Debug.WriteLine($"✅ Created new patient: {newPatient.Name}, starting visit...");
+                            
+                            // Wait another moment before starting visit
+                            await Task.Delay(100);
+                            
+                            // Switch to Visit tab
+                            VisitTabButton.IsChecked = true;
+                            
+                            // Start visit for new patient
+                            await _viewModel.SelectPatientAsync(newPatient);
+                        }
+                        else
+                        {
+                            MessageBox.Show("Patient was created but could not be found in the list. Please select them manually.", 
+                                "Info", MessageBoxButton.OK, MessageBoxImage.Information);
+                        }
                     }
                 }
             }
@@ -230,11 +349,14 @@ namespace WPF
             }
         }
 
+        // COMMENTED OUT - Old UI elements removed during tab layout redesign
+        /*
         private void StartVisitForPatient(PatientViewModel patient)
         {
             VisitManagementExpander.IsExpanded = true;
-            StatusText.Text = $"Started visit for {patient.Name}";
+            Debug.WriteLine($"✅ Started visit for {patient.Name}");
         }
+        */
 
         private void DebugButton_Click(object sender, RoutedEventArgs e)
         {
@@ -253,11 +375,14 @@ namespace WPF
             await _viewModel.AddLabResultAsync();
         }
 
+        // COMMENTED OUT - Old UI elements removed during tab layout redesign
+        /*
         private void PrintSummaryButton_Click(object sender, RoutedEventArgs e)
         {
             var patient = PatientListBox.SelectedItem as PatientViewModel;
             _viewModel.PrintVisitSummary(patient);
         }
+        */
 
         private void ToggleRightPanelButton_Click(object sender, RoutedEventArgs e)
         {
@@ -273,6 +398,9 @@ namespace WPF
         {
             // Optional scroll tweak
         }
+        
+        // COMMENTED OUT - Old UI elements removed during tab layout redesign
+        /*
         private void ClearVisitForm()
         {
             TxtDiagnosis.Clear();
@@ -286,8 +414,9 @@ namespace WPF
             TxtPrescriptions.Clear();
             TxtResultValue.Clear();
         }
+        */
 
-        #endregion
+        #endregion UI Methods
 
         #region Dependency Properties
 
@@ -301,10 +430,9 @@ namespace WPF
             DependencyProperty.Register(nameof(IsRightPanelVisible), typeof(bool),
                 typeof(MainWindow), new PropertyMetadata(false));
 
-        #endregion
+        #endregion Dependency Properties
 
         #region Helper Methods
-
 
         private void UpdatePanel(Border panel, bool visible)
         {
@@ -312,7 +440,6 @@ namespace WPF
                 panel.Visibility = visible ? Visibility.Visible : Visibility.Collapsed;
         }
 
-        #endregion
+        #endregion Helper Methods
     }
-
 }

@@ -7,20 +7,20 @@
     <DockPanel>
         <!-- Toolbar -->
         <ToolBar DockPanel.Dock="Top">
-            <Button Content="Refresh" Click="RefreshButton_Click"/>
-            <Button Content="Clear" Click="ClearButton_Click"/>
-            <Button Content="Save to File" Click="SaveButton_Click"/>
-            <CheckBox Content="Auto-refresh" IsChecked="{Binding AutoRefresh}" Margin="10,0,0,0"/>
-            <CheckBox Content="Debug Enabled" IsChecked="{Binding DebugEnabled}" Margin="10,0,0,0"/>
+            <Button Content="Refresh" Click="RefreshButton_Click" />
+            <Button Content="Clear" Click="ClearButton_Click" />
+            <Button Content="Save to File" Click="SaveButton_Click" />
+            <CheckBox Content="Auto-refresh" IsChecked="{Binding AutoRefresh}" Margin="10,0,0,0" />
+            <CheckBox Content="Debug Enabled" IsChecked="{Binding DebugEnabled}" Margin="10,0,0,0" />
         </ToolBar>
 
         <!-- Logs Display -->
-        <TextBox x:Name="LogTextBox" 
-                 IsReadOnly="True" 
+        <TextBox x:Name="LogTextBox"
+                 IsReadOnly="True"
                  VerticalScrollBarVisibility="Auto"
                  HorizontalScrollBarVisibility="Auto"
                  FontFamily="Consolas"
                  FontSize="12"
-                 TextWrapping="NoWrap"/>
+                 TextWrapping="NoWrap" />
     </DockPanel>
 </Window>

@@ -3,7 +3,6 @@ using Core.Entities;
 using Core.Helpers;
 using Core.Interfaces.Services;
 using Core.ValueObjects;
-using System;
 
 namespace Core.Services
 {
@@ -15,7 +14,7 @@ namespace Core.Services
             {
                 PatientId = domainModel.PatientId,
                 Name = domainModel.Name,
-                Sex = GetSexString(domainModel.Sex),
+                Sex = domainModel.Sex,  // No conversion needed - enum to enum
                 DateOfBirth = domainModel.DateOfBirth.ToDateTime(TimeOnly.MinValue),
                 PhoneNumber = domainModel.PhoneNumber?.Value,
                 BloodGroup = domainModel.BloodGroup,
@@ -24,14 +23,17 @@ namespace Core.Services
                 ShortNote = domainModel.ShortNote
             };
         }
+
         private string GetSexString(Sex sex)
         {
             switch (sex)
             {
                 case Sex.Male:
                     return "Male";
+
                 case Sex.Female:
                     return "Female";
+
                 default:
                     return "Unknown";
             }
@@ -49,7 +51,7 @@ namespace Core.Services
                     ? AgeCalculator.ToDateOfBirth(dto.Age.Value)
                     : AgeCalculator.ToDateOfBirth(30));
 
-            Sex sex = Enum.TryParse<Sex>(dto.Sex, true, out var s) ? s : Sex.Unknown;
+            Sex sex = dto.Sex;  // Direct assignment - no parsing needed
 
             var patient = new Patient(dto.Name, sex, dob);
 
@@ -59,13 +61,12 @@ namespace Core.Services
             return patient;
         }
 
-
         // This new method handles updating an existing entity from the DTO
         public void MapUpdateDtoToDomain(PatientUpdateDto dto, Patient patient)
         {
             if (dto.Name != null || dto.Sex != null || dto.DateOfBirth != null)
             {
-                Sex sex = Enum.TryParse<Sex>(dto.Sex, true, out var s) ? s : Sex.Unknown;
+                Sex sex = dto.Sex ?? patient.Sex;  // Use nullable enum directly
                 patient.UpdateIdentity(
                     dto.Name ?? patient.Name,
                     sex,

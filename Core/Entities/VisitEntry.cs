@@ -1,5 +1,4 @@
-﻿using Core.Entities;
-using System;
+﻿using Core.Validators;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Core.Entities
@@ -14,41 +13,31 @@ namespace Core.Entities
 
         [NotMapped]
         public ClinicalSystem? System => SystemCode is null ? null : ClinicalSystem.FromCode(SystemCode); // NOT stored in DB (computed)
-        
+
         public string Content { get; private set; } = null!;
 
-        protected VisitEntry() { } // EF only
+        protected VisitEntry()
+        { } // EF only
 
         public VisitEntry(int visitId, string section, string content, ClinicalSystem? system = null)
         {
-            SetSection(section);
-            SetContent(content);
             VisitId = visitId;
-            SystemCode = system?.Code;
+            UpdateEntry(section, content, system);
         }
 
         public void Update(string section, string content, ClinicalSystem? system)
         {
-            SetSection(section);
-            SetContent(content);
-            SystemCode = system?.Code;
+            UpdateEntry(section, content, system);
         }
 
-        private void SetSection(string section)
+        private void UpdateEntry(string section, string content, ClinicalSystem? system)
         {
-            if (string.IsNullOrWhiteSpace(section))
-                throw new ArgumentException("Visit Section is required.");
+            StringValidator.ValidateNotEmpty(section, nameof(section));
+            StringValidator.ValidateNotEmpty(content, nameof(content));
 
             Section = section.Trim();
-        }
-
-
-        private void SetContent(string content)
-        {
-            if (string.IsNullOrWhiteSpace(content))
-                throw new ArgumentException("Content is required.");
-
             Content = content.Trim();
+            SystemCode = system?.Code;
         }
     }
 }

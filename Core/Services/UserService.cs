@@ -74,7 +74,6 @@ namespace Core.Services
             }
         }
 
-
         public async Task<List<PatientDto>> GetAllPatientsAsync(string baseUrl, string token)
         {
             _api.SetAuthToken(token);

@@ -1,5 +1,6 @@
 using Core.Configuration;
 using Core.Data.Context;
+using Core.Data.Seeding;
 using Core.Entities;
 using Core.Http;
 using Core.Interfaces;
@@ -99,6 +100,11 @@ builder.Services.AddScoped<ILoginService, LoginService>();
 builder.Services.AddScoped<IVisitService, VisitService>();
 builder.Services.AddScoped<IProfileService, ProfileService>();
 builder.Services.AddSingleton<ISpecialtyProfile, ObGyneProfile>();
+builder.Services.AddSingleton<ISpecialtyProfile, OphthalmologyProfile>();
+builder.Services.AddSingleton<ISpecialtyProfile, OrthopedicProfile>();
+
+// Register ClinicalCatalog to aggregate systems/sections/profiles
+builder.Services.AddSingleton<ClinicalCatalog>(sp => new ClinicalCatalog(sp.GetServices<ISpecialtyProfile>()));
 builder.Services.AddScoped<IPatientMappingService, PatientMappingService>();
 builder.Services.AddScoped<IUserMappingService, UserMappingService>();
 builder.Services.AddScoped<ILabResultsMappingService, LabResultsMappingService>();
@@ -131,7 +137,7 @@ builder.Services.AddSwaggerGen(c =>
     // Add JWT Authentication support to Swagger
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
-        Description = @"JWT Authorization header using the Bearer scheme. 
+        Description = @"JWT Authorization header using the Bearer scheme.
                       Enter 'Bearer' [space] and then your token in the text input below.
                       Example: 'Bearer 12345abcdef'",
         Name = "Authorization",
@@ -180,6 +186,23 @@ builder.Services.AddCors(options =>
 builder.Services.AddHealthChecks();
 
 var app = builder.Build();
+
+// ===== Seed Default Users =====
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    var userStore = scope.ServiceProvider.GetRequiredService<IUserStore<AppUser>>();
+    var passwordHasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher<AppUser>>();
+
+    try
+    {
+        await UserSeeder.SeedAdminUserAsync(db, userStore, passwordHasher);
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"[SEEDING ERROR] Failed to seed users: {ex.Message}");
+    }
+}
 
 // ===== Exception Handling Middleware =====
 app.UseExceptionHandling();

@@ -13,9 +13,9 @@ namespace Core.Entities
         public int SpecialtyProfileId { get; set; } = 1;
         public SpecialtyProfile? SpecialtyProfile { get; set; }
 
-
         // For fingerprint authentication
         public bool HasFingerprintEnrolled { get; set; }
+
         public byte[] FingerprintTemplate { get; set; } = Array.Empty<byte>();
     }
 }

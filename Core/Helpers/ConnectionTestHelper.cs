@@ -1,5 +1,5 @@
-﻿using System.Net.NetworkInformation;
-using Microsoft.Extensions.Logging;
+﻿using Microsoft.Extensions.Logging;
+using System.Net.NetworkInformation;
 
 namespace Core.Helpers
 {
@@ -85,6 +85,6 @@ namespace Core.Helpers
             }
         }
 
-        #endregion
+        #endregion Private Helper Methods
     }
 }

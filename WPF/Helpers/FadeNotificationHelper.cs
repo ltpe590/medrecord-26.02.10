@@ -24,9 +24,11 @@ namespace WPF.Helpers
                 new PropertyMetadata(null));
 
         public static double GetDuration(DependencyObject obj) => (double)obj.GetValue(DurationProperty);
+
         public static void SetDuration(DependencyObject obj, double value) => obj.SetValue(DurationProperty, value);
 
         public static DependencyProperty GetTargetProperty(DependencyObject obj) => (DependencyProperty)obj.GetValue(TargetPropertyProperty);
+
         public static void SetTargetProperty(DependencyObject obj, DependencyProperty value) => obj.SetValue(TargetPropertyProperty, value);
 
         private static void OnDurationChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)

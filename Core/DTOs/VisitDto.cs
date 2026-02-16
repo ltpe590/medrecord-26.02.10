@@ -9,15 +9,16 @@ namespace Core.DTOs
         public DateTime DateOfVisit { get; init; }
 
         [StringLength(500)]
-        public required string Diagnosis { get; init; } = string.Empty;
+        public string Diagnosis { get; init; } = string.Empty;
 
         [StringLength(2000)]
         public string? Notes { get; init; }
 
         // --- Vital signs ---
         public decimal Temperature { get; init; }
+
         public int BloodPressureSystolic { get; init; }
-        public int BloodPressureDiastolic { get; init; }        
+        public int BloodPressureDiastolic { get; init; }
 
         /// <summary>Optional list of related prescription IDs.</summary>
         public IReadOnlyList<int> PrescriptionIds { get; init; } = Array.Empty<int>();
@@ -36,7 +37,7 @@ namespace Core.DTOs
         public DateTime DateOfVisit { get; init; } = DateTime.UtcNow;
 
         [StringLength(500)]
-        public required string Diagnosis { get; init; } = string.Empty;
+        public string Diagnosis { get; init; } = string.Empty;
 
         [StringLength(2000)]
         public string? Notes { get; init; }

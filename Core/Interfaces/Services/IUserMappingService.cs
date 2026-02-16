@@ -6,7 +6,9 @@ namespace Core.Interfaces.Services
     public interface IUserMappingService
     {
         UserDto MapToDto(AppUser domainUser);
+
         AppUser MapToDomain(UserCreateDto dto);
+
         UserCreateDto MapToCreateDto(string username, string email, string PhoneNumber, string password);
     }
 

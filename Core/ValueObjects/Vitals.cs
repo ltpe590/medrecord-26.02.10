@@ -6,7 +6,8 @@ public class Vitals
     public int? Systolic { get; private set; }
     public int? Diastolic { get; private set; }
 
-    protected Vitals() { } // EF
+    protected Vitals()
+    { } // EF
 
     public Vitals(decimal? temperature, int? systolic, int? diastolic)
     {

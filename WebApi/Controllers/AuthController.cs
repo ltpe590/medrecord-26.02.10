@@ -1,6 +1,5 @@
 ﻿using Core.DTOs;
 using Core.Entities;
-using Core.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
@@ -27,13 +26,13 @@ namespace WebApi.Controllers
 
         public class LoginModel
         {
-            public required string Username { get; set; }
-            public required string Password { get; set; }
+            public string Username { get; set; }
+            public string Password { get; set; }
         }
 
         public class RegisterModel : LoginModel
         {
-            public required string Email { get; set; }
+            public string Email { get; set; }
         }
 
         [HttpPost("register")]
@@ -95,7 +94,6 @@ namespace WebApi.Controllers
                 Console.WriteLine($"Login SUCCESS for '{model.Username}'");
 
                 return Ok(new LoginResponse { Token = token, Username = user?.UserName ?? "Unknown Username" });
-
             }
             catch (Exception ex)
             {
@@ -181,7 +179,6 @@ namespace WebApi.Controllers
                 return BadRequest(new { Error = ex.Message, StackTrace = ex.StackTrace });
             }
         }
-
 
         private string GenerateJwtToken(AppUser user)
         {

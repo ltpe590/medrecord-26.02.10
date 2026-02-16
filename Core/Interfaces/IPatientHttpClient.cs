@@ -15,7 +15,9 @@ namespace Core.Interfaces
 
         // CRUD operations
         Task<PatientDto?> CreatePatientAsync(PatientCreateDto dto, CancellationToken ct = default);
+
         Task<bool> UpdatePatientAsync(PatientUpdateDto dto, CancellationToken ct = default);
+
         Task<bool> DeletePatientAsync(int id, CancellationToken ct = default);
     }
 }

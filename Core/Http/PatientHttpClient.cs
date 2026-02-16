@@ -2,9 +2,6 @@
 using Core.Interfaces;
 using Core.Interfaces.Services;
 using Microsoft.Extensions.Logging;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace Core.Http
 {

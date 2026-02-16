@@ -1,7 +1,4 @@
 ﻿using Core.DTOs;
-using Core.Services;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 
 namespace Core.Interfaces.Services
 {
@@ -18,8 +15,9 @@ namespace Core.Interfaces.Services
 
         // CRUD operations
         Task<PatientDto?> CreatePatientAsync(PatientCreateDto dto);
-        Task<bool> UpdatePatientAsync(PatientUpdateDto dto);
-        Task<bool> DeletePatientAsync(int id);
 
+        Task<bool> UpdatePatientAsync(PatientUpdateDto dto);
+
+        Task<bool> DeletePatientAsync(int id);
     }
 }

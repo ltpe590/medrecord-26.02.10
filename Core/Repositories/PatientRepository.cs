@@ -1,7 +1,7 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Core.Interfaces.Repositories;
-using Core.Data.Context;
+﻿using Core.Data.Context;
 using Core.Entities;
+using Core.Interfaces.Repositories;
+using Microsoft.EntityFrameworkCore;
 
 namespace Core.Repositories
 {
@@ -21,7 +21,6 @@ namespace Core.Repositories
                 .AsNoTracking()
                 .ToListAsync();
         }
-
 
         public async Task<Patient> GetByIdAsync(int id)
         {
@@ -51,7 +50,6 @@ namespace Core.Repositories
             patient.SoftDelete();
             await _context.SaveChangesAsync();
         }
-
 
         public async Task<bool> ExistsAsync(int id)
         {

@@ -1,4 +1,4 @@
-﻿using System;
+﻿using Core.Entities;
 using System.ComponentModel.DataAnnotations;
 
 namespace Core.DTOs
@@ -10,7 +10,7 @@ namespace Core.DTOs
         [Required, StringLength(100)]
         public string Name { get; init; } = string.Empty;
 
-        public string? Sex { get; init; }
+        public Sex Sex { get; init; }  // Changed from string? to Sex enum
 
         public DateTime DateOfBirth { get; init; }
 
@@ -29,7 +29,7 @@ namespace Core.DTOs
         [Required, StringLength(100)]
         public string Name { get; init; } = string.Empty;
 
-        public string? Sex { get; init; }
+        public Sex Sex { get; init; }  // Changed from string? to Sex enum
 
         // EITHER age OR date of birth supplied (validate in service layer)
         public int? Age { get; init; }
@@ -51,7 +51,7 @@ namespace Core.DTOs
         [StringLength(100)]
         public string? Name { get; init; }
 
-        public string? Sex { get; init; }
+        public Sex? Sex { get; init; }  // Changed from string? to Sex? (nullable enum)
 
         public DateOnly? DateOfBirth { get; init; }
 

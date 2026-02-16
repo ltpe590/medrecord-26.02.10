@@ -10,6 +10,7 @@ namespace WPF.ViewModels
     public class VisitPageViewModel : INotifyPropertyChanged
     {
         #region Private Fields
+
         private readonly int _patientId;
         private readonly string _patientName;
         private readonly IAppSettingsService _settings;
@@ -19,6 +20,7 @@ namespace WPF.ViewModels
 
         // Visit data
         private string _diagnosis = string.Empty;
+
         private string _notes = string.Empty;
         private decimal _temperature;
         private int _bpSystolic;
@@ -30,21 +32,25 @@ namespace WPF.ViewModels
 
         // Status tracking
         private VisitStatus _visitStatus = VisitStatus.InProgress;
+
         private DateTime _visitStartTime;
         private DateTime? _lastSavedTime;
         private string _statusMessage = string.Empty;
 
         // Collections
         private List<TestCatalogDto> _availableTests = new();
+
         private List<DrugCatalogDto> _availableDrugs = new();
         private List<LabResultEntry> _labResults = new();
         private List<PrescriptionEntry> _prescriptions = new();
 
         // Selected items
         private TestCatalogDto? _selectedLabTest;
+
         private DrugCatalogDto? _selectedDrug;
         private string _labResultValue = string.Empty;
         private string _dosage = string.Empty;
+
         #endregion Private Fields
 
         public VisitPageViewModel(
@@ -214,7 +220,7 @@ namespace WPF.ViewModels
             set { _dosage = value; OnPropertyChanged(); }
         }
 
-        #endregion
+        #endregion Properties
 
         #region Public Methods
 
@@ -401,7 +407,8 @@ namespace WPF.ViewModels
                 throw;
             }
         }
-        #endregion
+
+        #endregion Public Methods
 
         #region Helper Methods
 
@@ -421,7 +428,6 @@ namespace WPF.ViewModels
             public string Dosage { get; set; } = string.Empty;
             public string? Form { get; set; }
         }
-
 
         private async Task LoadTestCatalogAsync(string authToken, ILogger<VisitPageViewModel> logger)
         {
@@ -486,6 +492,7 @@ namespace WPF.ViewModels
             // For now, return 0 or implement proper visit ID tracking
             return 0; // Placeholder
         }
+
         #endregion Helper Methods
 
         #region Private Methods
@@ -509,7 +516,7 @@ namespace WPF.ViewModels
             };
         }
 
-        #endregion
+        #endregion Private Methods
 
         #region INotifyPropertyChanged
 
@@ -520,10 +527,11 @@ namespace WPF.ViewModels
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
 
-        #endregion
+        #endregion INotifyPropertyChanged
     }
 
     #region Helper Classes
+
     public enum VisitStatus
     {
         InProgress,
@@ -533,5 +541,6 @@ namespace WPF.ViewModels
         Cancelled,
         Error
     }
-    #endregion
+
+    #endregion Helper Classes
 }

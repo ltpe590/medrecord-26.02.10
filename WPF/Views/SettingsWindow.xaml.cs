@@ -1,11 +1,5 @@
-﻿using Core.Interfaces.Services;
-using Core.Services;
-using Microsoft.Extensions.Logging;
-using System;
-using System.Net;
-using System.Net.NetworkInformation;
+﻿using Microsoft.Extensions.Logging;
 using System.Windows;
-using WPF.Helpers;
 using WPF.ViewModels;
 
 namespace WPF.Views

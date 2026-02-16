@@ -1,14 +1,19 @@
-﻿using Core.ValueObjects;
+﻿using Core.Validators;
+using Core.ValueObjects;
 
 namespace Core.Entities
 {
     public class Patient
     {
-        protected Patient() { }
+        protected Patient()
+        { }
 
         public Patient(string name, Sex sex, DateOnly dateOfBirth)
         {
-            Name = name;
+            StringValidator.ValidateNotEmpty(name, nameof(name));
+            DateValidator.ValidateDateOfBirth(dateOfBirth, nameof(dateOfBirth));
+
+            Name = name.Trim();
             Sex = sex;
             DateOfBirth = dateOfBirth;
             CreatedAt = DateTime.UtcNow;
@@ -35,31 +40,48 @@ namespace Core.Entities
 
         public void UpdateContact(PhoneNumber? phone, string? address)
         {
+            if (address != null)
+                StringValidator.ValidateNotEmpty(address, nameof(address));
+
             PhoneNumber = phone;
-            Address = address;
-            UpdatedAt = DateTime.UtcNow;
+            Address = address?.Trim();
+            UpdateTimestamp();
         }
 
         public void UpdateClinicalInfo(string? bloodGroup, string? allergies, string? shortNote)
         {
-            BloodGroup = bloodGroup;
-            Allergies = allergies;
-            ShortNote = shortNote;
-            UpdatedAt = DateTime.UtcNow;
+            if (bloodGroup != null)
+                StringValidator.ValidateNotEmpty(bloodGroup, nameof(bloodGroup));
+            if (allergies != null)
+                StringValidator.ValidateNotEmpty(allergies, nameof(allergies));
+            if (shortNote != null)
+                StringValidator.ValidateNotEmpty(shortNote, nameof(shortNote));
+
+            BloodGroup = bloodGroup?.Trim();
+            Allergies = allergies?.Trim();
+            ShortNote = shortNote?.Trim();
+            UpdateTimestamp();
         }
 
         public void UpdateIdentity(string name, Sex sex, DateOnly dob)
         {
-            Name = name;
+            StringValidator.ValidateNotEmpty(name, nameof(name));
+            DateValidator.ValidateDateOfBirth(dob, nameof(dob));
+
+            Name = name.Trim();
             Sex = sex;
             DateOfBirth = dob;
-            UpdatedAt = DateTime.UtcNow;
+            UpdateTimestamp();
         }
-
 
         public void SoftDelete()
         {
             IsDeleted = true;
+            UpdateTimestamp();
+        }
+
+        private void UpdateTimestamp()
+        {
             UpdatedAt = DateTime.UtcNow;
         }
     }

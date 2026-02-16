@@ -1,8 +1,7 @@
-﻿using Microsoft.Extensions.Logging;
-using System.Diagnostics;
+﻿using Core.Interfaces.Services;
 using Core.Models;
-using Core.Interfaces.Services;
-using System.Net.Http;
+using Microsoft.Extensions.Logging;
+using System.Diagnostics;
 
 namespace Core.Services
 {
@@ -13,6 +12,7 @@ namespace Core.Services
         private bool _isApiConnected;
 
         public bool IsApiConnected => _isApiConnected;
+
         public event EventHandler<ConnectionStatusChangedEventArgs>? ConnectionStatusChanged;
 
         public ConnectionService(HttpClient httpClient, ILogger<ConnectionService> logger)
@@ -94,5 +94,4 @@ namespace Core.Services
                 new ConnectionStatusChangedEventArgs(isConnected, message));
         }
     }
-
 }

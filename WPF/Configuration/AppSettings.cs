@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace WPF.Configuration
+﻿namespace WPF.Configuration
 {
     /// <summary>
     /// Strong-typed wrapper for application-level settings.

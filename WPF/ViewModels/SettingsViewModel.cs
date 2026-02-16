@@ -1,9 +1,9 @@
-﻿using Core.Models;
-using Core.Interfaces.Services;
+﻿using Core.Interfaces.Services;
+using Core.Models;
 using Microsoft.Extensions.Logging;
-using System.Windows;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Windows;
 using WPF.Configuration;
 
 namespace WPF.ViewModels
@@ -23,6 +23,7 @@ namespace WPF.ViewModels
 
         // Connection testing properties
         private bool _isTestingConnection;
+
         private string _connectionStatus = "Not tested";
         private string _connectionStatusColor = "Gray";
 
@@ -43,7 +44,6 @@ namespace WPF.ViewModels
 
             _logger.LogInformation("SettingsViewModel initialized");
         }
-
 
         public string ApiBaseUrl
         {
@@ -86,6 +86,7 @@ namespace WPF.ViewModels
         }
 
         #region TestConnection
+
         public bool TestConnectionAfterSave
         {
             get => _testConnectionAfterSave;
@@ -264,6 +265,7 @@ namespace WPF.ViewModels
         {
             _connectionService.ConnectionStatusChanged -= OnConnectionStatusChanged;
         }
+
         #endregion TestConnection
 
         private void LoadCurrentSettings()
@@ -317,7 +319,6 @@ namespace WPF.ViewModels
             }
         }
 
-
         private void SetPropertySafely(string propertyName, object? value)
         {
             var prop = _appSettings.GetType().GetProperty(propertyName);
@@ -334,6 +335,7 @@ namespace WPF.ViewModels
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;
+
         protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
             => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }

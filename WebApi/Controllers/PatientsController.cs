@@ -1,10 +1,8 @@
 ﻿using Core.DTOs;
+using Core.Entities;
 using Core.Interfaces.Repositories;
 using Core.Interfaces.Services;
-using Core.UseCases.PatientUseCases;
-using Core.ValueObjects;
 using Microsoft.AspNetCore.Mvc;
-using Core.Entities;
 
 namespace WebApi.Controllers
 {
@@ -15,13 +13,11 @@ namespace WebApi.Controllers
         private readonly IPatientRepository _patientRepository;
         private readonly IPatientMappingService _patientMappingService;
 
-
         public PatientsController(IPatientRepository patientRepository, IPatientMappingService patientMappingService)
         {
             _patientRepository = patientRepository;
             _patientMappingService = patientMappingService;
         }
-
 
         // GET: api/Patients
         [HttpGet]
@@ -42,7 +38,6 @@ namespace WebApi.Controllers
             return _patientMappingService.MapToDto(patient);
         }
 
-
         // PUT: api/Patients/
         [HttpPut]
         public async Task<IActionResult> UpdatePatient([FromBody] PatientUpdateDto dto)
@@ -57,7 +52,6 @@ namespace WebApi.Controllers
             await _patientRepository.UpdateAsync(patient);
             return NoContent();
         }
-
 
         [HttpPut("{id}")]
         public async Task<IActionResult> PutPatient(int id, Patient patient)
@@ -88,7 +82,6 @@ namespace WebApi.Controllers
             await _patientRepository.AddAsync(patient);
             return CreatedAtAction(nameof(GetPatient), new { id = patient.PatientId }, patient);
         }
-
 
         // DELETE: api/Patients
         [HttpDelete("{id:int}")]

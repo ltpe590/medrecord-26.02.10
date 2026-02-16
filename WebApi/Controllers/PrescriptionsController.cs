@@ -1,9 +1,4 @@
-﻿using Core.Data.Context;
-using Core.Models;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-
-namespace WebApi.Controllers
+﻿namespace WebApi.Controllers
 {
     /*
     [Route("api/[controller]")]
@@ -146,7 +141,6 @@ namespace WebApi.Controllers
         {
             return _context.Prescriptions.Any(e => e.PrescriptionId == id);
         }
-
     }
     */
 }

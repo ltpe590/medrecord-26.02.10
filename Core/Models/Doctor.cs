@@ -9,19 +9,19 @@ namespace Core.Models
         public int DoctorId { get; set; }
 
         [Required]
-        public required string DoctorName { get; set; }
+        public string DoctorName { get; set; } = string.Empty;
 
-        public required string Degree { get; set; } // M.b.Ch.B, Ph.D.
+        public string Degree { get; set; } = string.Empty; // M.b.Ch.B, Ph.D.
 
-        public required string Specialty { get; set; } // Cardiology, Dermatology
+        public string Specialty { get; set; } = string.Empty; // Cardiology, Dermatology
 
-        public required string ClinicName { get; set; }
+        public string ClinicName { get; set; } = string.Empty;
 
-        public required string ClinicAddress { get; set; }
+        public string ClinicAddress { get; set; } = string.Empty;
 
-        public required string ClinicPhoneNumber { get; set; }
+        public string ClinicPhoneNumber { get; set; } = string.Empty;
 
-        public string? Email { get; set; }
+        public string Email { get; set; } = string.Empty;
 
         // Navigation property
         public ICollection<Visit> MedicalRecords { get; set; } = new List<Visit>();

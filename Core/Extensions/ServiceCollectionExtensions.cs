@@ -1,4 +1,5 @@
-﻿using Core.Http;
+﻿using Core.Entities;
+using Core.Http;
 using Core.Interfaces;
 using Core.Interfaces.Repositories;
 using Core.Interfaces.Services;
@@ -41,6 +42,11 @@ namespace Core.Extensions
             services.AddScoped<IVisitRepository, VisitRepository>();
             services.AddScoped<IProfileService, ProfileService>();
             services.AddSingleton<ISpecialtyProfile, ObGyneProfile>();
+            services.AddSingleton<ISpecialtyProfile, OphthalmologyProfile>();
+            services.AddSingleton<ISpecialtyProfile, OrthopedicProfile>();
+
+            // Clinical catalog aggregates systems, sections and registered profiles
+            services.AddSingleton<ClinicalCatalog>(sp => new ClinicalCatalog(sp.GetServices<ISpecialtyProfile>()));
             services.AddScoped<ITestCatalogRepository, TestCatalogRepository>();
             services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
 

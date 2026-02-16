@@ -14,10 +14,12 @@ namespace Core.Data.Context
 
         // ===== Clinical Core =====
         public DbSet<Patient> Patients { get; set; }
+
         public DbSet<Visit> Visits { get; set; }
 
         // ===== Clinical Modules =====
         public DbSet<TestsCatalog> TestCatalogs { get; set; }
+
         public DbSet<DrugCatalog> DrugCatalogs { get; set; }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
@@ -45,6 +47,5 @@ namespace Core.Data.Context
 
             TestCatalogSeeder.SeedTestCatalogs(modelBuilder);
         }
-
     }
 }

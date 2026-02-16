@@ -4,6 +4,7 @@ using Core.Http;
 using Core.Interfaces;
 using Core.Interfaces.Repositories;
 using Core.Interfaces.Services;
+using Core.Profiles;
 using Core.Repositories;
 using Core.Services;
 using Microsoft.EntityFrameworkCore;
@@ -17,30 +18,144 @@ using System.Windows;
 using WPF.Mappers;
 using WPF.ViewModels;
 using WPF.Views;
+using WPF.Windows;
 
 namespace WPF
 {
     public partial class App : Application
     {
         private static IHost? _host;
+        private static string _logFile = Path.Combine(AppContext.BaseDirectory, "logs", $"startup_{DateTime.Now:yyyyMMdd_HHmmss}.log");
 
         public static IServiceProvider Services
             => _host?.Services ?? throw new InvalidOperationException("Host not initialized");
 
+        private static void Log(string message)
+        {
+            var msg = $"[{DateTime.Now:HH:mm:ss.fff}] {message}";
+            Debug.WriteLine(msg);
+            try
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(_logFile)!);
+                File.AppendAllText(_logFile, msg + Environment.NewLine);
+            }
+            catch { /* Ignore file logging errors */ }
+        }
+
         protected override void OnStartup(StartupEventArgs e)
         {
-            base.OnStartup(e);
+            Log("=== WPF App OnStartup BEGIN ===");
 
-            _host = Host.CreateDefaultBuilder()
-                .ConfigureLogging(ConfigureLogging)
-                .ConfigureServices(ConfigureServices)  // <-- FIXED: Call the actual method!
-                .Build();
+            try
+            {
+                base.OnStartup(e);
+                Log("✅ base.OnStartup() completed");
 
-            _host.Start();
+                // Global exception handlers - capture unhandled exceptions to a log file for diagnosis
+                AppDomain.CurrentDomain.UnhandledException += (s, ev) => LogUnhandledException(ev.ExceptionObject as Exception, "AppDomain.CurrentDomain.UnhandledException");
+                this.DispatcherUnhandledException += (s, ev) =>
+                {
+                    LogUnhandledException(ev.Exception, "Application.DispatcherUnhandledException");
+                    // TEMPORARY: Don't handle - let it crash so we can see the error!
+                    ev.Handled = false;  // Changed from true to false for debugging
+                };
+                TaskScheduler.UnobservedTaskException += (s, ev) =>
+                {
+                    LogUnhandledException(ev.Exception, "TaskScheduler.UnobservedTaskException");
+                    ev.SetObserved();
+                };
+                Log("✅ Exception handlers registered");
 
-            // Resolve and show main window
-            var mainWindow = Services.GetRequiredService<MainWindow>();
-            mainWindow.Show();
+                // Debugger.Launch() removed - it blocks the UI startup
+                // If you need to attach a debugger, use Debug → Attach to Process in Visual Studio
+                // Or start with F5 (Start Debugging) instead of Ctrl+F5
+
+                Log("⏳ Building host...");
+                _host = Host.CreateDefaultBuilder()
+                    .ConfigureLogging(ConfigureLogging)
+                    .ConfigureServices(ConfigureServices)
+                    .Build();
+                Log("✅ Host built successfully");
+
+                Log("⏳ Starting host...");
+                _host.Start();
+                Log("✅ Host started successfully");
+
+                // CRITICAL: Set ShutdownMode BEFORE showing any windows
+                ShutdownMode = ShutdownMode.OnMainWindowClose;
+                Log("✅ Set ShutdownMode to OnMainWindowClose");
+
+                // CREATE AND SHOW MAIN WINDOW FIRST (keeps app alive)
+                Log("⏳ Resolving MainWindow from DI...");
+                var mainWindow = Services.GetRequiredService<MainWindow>();
+                Log($"✅ MainWindow resolved: {mainWindow != null}");
+
+                // Set as main window
+                MainWindow = mainWindow;
+                Log("✅ Set Application.MainWindow");
+                
+                // Show MainWindow immediately (keeps app alive)
+                mainWindow.WindowState = WindowState.Maximized;
+                mainWindow.Show();
+                Log("✅ MainWindow shown (app will stay alive now)");
+
+                // NOW SHOW LOGIN WINDOW MODAL ON TOP OF MAINWINDOW
+                Log("⏳ Showing LoginWindow as modal dialog...");
+                var loginWindow = Services.GetRequiredService<WPF.Windows.LoginWindow>();
+                loginWindow.Owner = mainWindow;  // Set MainWindow as owner
+                Log("✅ LoginWindow resolved");
+                
+                var loginResult = loginWindow.ShowDialog();
+                Log($"✅ LoginWindow closed. DialogResult: {loginResult}");
+
+                if (loginResult != true || string.IsNullOrEmpty(loginWindow.AuthToken))
+                {
+                    Log("❌ Login cancelled or failed. Closing MainWindow and shutting down.");
+                    mainWindow.Close();  // Close MainWindow, which will trigger shutdown
+                    return;
+                }
+
+                Log($"✅ Login successful! Auth token length: {loginWindow.AuthToken.Length}");
+
+                // Pass auth token to MainWindow ViewModel (fire-and-forget, don't block UI)
+                Log("⏳ Passing auth token to MainWindow ViewModel...");
+                if (mainWindow.DataContext is MainWindowViewModel vm)
+                {
+                    // Don't block - let it load in background
+                    _ = vm.SetAuthTokenAndInitializeAsync(loginWindow.AuthToken);
+                    Log("✅ Auth token passed (loading patients in background)");
+                }
+                else
+                {
+                    Log("❌ WARNING: MainWindow.DataContext is not MainWindowViewModel!");
+                }
+                
+                // MainWindow is already showing, just activate it
+                mainWindow.Activate();
+                mainWindow.Focus();
+                Log("✅ MainWindow activated and ready to use");
+
+                Log("=== WPF App OnStartup COMPLETED SUCCESSFULLY ===");
+            }
+            catch (Exception ex)
+            {
+                Log($"❌ EXCEPTION in OnStartup: {ex.GetType().Name}");
+                Log($"❌ Message: {ex.Message}");
+                Log($"❌ Stack Trace: {ex.StackTrace}");
+
+                // Also log to file
+                LogUnhandledException(ex, "OnStartup");
+
+                // Show error to user
+                MessageBox.Show(
+                    $"Application failed to start:\n\n{ex.Message}\n\nCheck Debug output for details.\n\nLog file: {_logFile}",
+                    "Startup Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
+
+                // Re-throw so debugger can catch it
+                throw;
+            }
         }
 
         protected override void OnExit(ExitEventArgs e)
@@ -65,61 +180,101 @@ namespace WPF
         // -----------------------------
         private static void ConfigureServices(HostBuilderContext context, IServiceCollection services)
         {
-            Debug.WriteLine("=== ConfigureServices called ===");
+            Debug.WriteLine("=== ConfigureServices START ===");
 
-            IConfiguration configuration = BuildConfiguration();
-            services.AddSingleton(configuration);
-            services.AddSingleton<IConfiguration>(configuration);
-
-            // AppSettings
-            services.AddSingleton<IAppSettingsService>(provider =>
+            try
             {
-                var config = provider.GetRequiredService<IConfiguration>();
-                var settings = new AppSettings();
-                config.GetSection("AppSettings").Bind(settings);
-                return settings;
-            });
-            services.AddSingleton<IAuthSession, AuthSession>();
+                Debug.WriteLine("⏳ Building configuration...");
+                IConfiguration configuration = BuildConfiguration();
+                services.AddSingleton(configuration);
+                services.AddSingleton<IConfiguration>(configuration);
+                Debug.WriteLine("✅ Configuration registered");
 
-            // Infrastructure
-            services.AddDbContext<ApplicationDbContext>((provider, options) =>
+                // AppSettings
+                Debug.WriteLine("⏳ Registering AppSettings...");
+                services.AddSingleton<IAppSettingsService>(provider =>
+                {
+                    var config = provider.GetRequiredService<IConfiguration>();
+                    var settings = new AppSettings();
+                    config.GetSection("AppSettings").Bind(settings);
+                    Debug.WriteLine($"   API Base URL from config: {settings.ApiBaseUrl}");
+                    return settings;
+                });
+                services.AddSingleton<IAuthSession, AuthSession>();
+                Debug.WriteLine("✅ AppSettings registered");
+
+                // Infrastructure
+                Debug.WriteLine("⏳ Registering DbContext...");
+                services.AddDbContext<ApplicationDbContext>((provider, options) =>
+                {
+                    var settings = provider.GetRequiredService<IAppSettingsService>();
+                    options.UseSqlServer(settings.ConnectionString);
+                });
+                Debug.WriteLine("✅ DbContext registered");
+
+                // HTTP
+                Debug.WriteLine("⏳ Registering HTTP services...");
+                services.AddHttpClient<IApiService, ApiService>();
+                services.AddScoped<IPatientHttpClient, PatientHttpClient>();
+                services.AddSingleton<IConnectionService, Core.Services.ConnectionService>();
+                Debug.WriteLine("✅ HTTP services registered");
+
+                // Specialty profiles - MUST BE REGISTERED FIRST before services that depend on them
+                Debug.WriteLine("⏳ Registering ISpecialtyProfile (ObGyneProfile)...");
+                services.AddSingleton<ISpecialtyProfile, ObGyneProfile>();
+                Debug.WriteLine("✅ ISpecialtyProfile registered");
+
+                // Repositories
+                Debug.WriteLine("⏳ Scanning and registering Repositories...");
+                services.Scan(scan => scan
+                    .FromAssembliesOf(typeof(IPatientRepository), typeof(PatientRepository))
+                    .AddClasses(c => c.Where(t => t.Name.EndsWith("Repository")))
+                    .AsImplementedInterfaces()
+                    .WithScopedLifetime());
+                Debug.WriteLine("✅ Repositories registered");
+
+                // Core Services
+                Debug.WriteLine("⏳ Scanning and registering Services...");
+                services.Scan(scan => scan
+                    .FromAssembliesOf(typeof(IUserService), typeof(UserService))
+                    .AddClasses(c => c.Where(t => t.Name.EndsWith("Service")))
+                    .AsImplementedInterfaces()
+                    .WithScopedLifetime());
+                Debug.WriteLine("✅ Services scanned and registered");
+
+                Debug.WriteLine("⏳ Registering IVisitService explicitly...");
+                services.AddScoped<IVisitService, VisitService>();
+                Debug.WriteLine("✅ IVisitService registered");
+
+                // UI
+                Debug.WriteLine("⏳ Registering UI components...");
+                
+                // Login components
+                services.AddTransient<WPF.Services.IBiometricService, WPF.Services.BiometricService>();
+                services.AddTransient<LoginViewModel>();
+                services.AddTransient<WPF.Windows.LoginWindow>();
+                Debug.WriteLine("✅ Login components registered");
+                
+                // Main window components
+                services.AddTransient<MainWindow>();
+                services.AddTransient<MainWindowViewModel>();
+                services.AddTransient<RegisterPatientWindow>();
+                services.AddTransient<RegisterPatientViewModel>();
+                services.AddTransient<SettingsWindow>();
+                services.AddTransient<SettingsViewModel>();
+                services.AddTransient<DebugWindow>();
+                services.AddSingleton<IVisitMapper, VisitMapper>();
+                Debug.WriteLine("✅ UI components registered");
+
+                Debug.WriteLine("=== ConfigureServices COMPLETED ===");
+            }
+            catch (Exception ex)
             {
-                var settings = provider.GetRequiredService<IAppSettingsService>();
-                options.UseSqlServer(settings.ConnectionString);
-            });
-            
-            // HTTP - FIXED: Only IApiService uses AddHttpClient!
-            services.AddHttpClient<IApiService, ApiService>();
-            services.AddScoped<IPatientHttpClient, PatientHttpClient>();  // Uses IApiService internally
-            services.AddSingleton<IConnectionService, Core.Services.ConnectionService>();
-
-            // Repositories
-            services.Scan(scan => scan
-                .FromAssembliesOf(typeof(IPatientRepository), typeof(PatientRepository))
-                .AddClasses(c => c.Where(t => t.Name.EndsWith("Repository")))
-                .AsImplementedInterfaces()
-                .WithScopedLifetime());
-
-            // Core Services
-            services.Scan(scan => scan
-                .FromAssembliesOf(typeof(IUserService), typeof(UserService))
-                .AddClasses(c => c.Where(t => t.Name.EndsWith("Service")))
-                .AsImplementedInterfaces()
-                .WithScopedLifetime());
-
-            services.AddScoped<IVisitService, VisitService>();
-
-            // UI
-            services.AddTransient<MainWindow>();
-            services.AddTransient<MainWindowViewModel>();
-            services.AddTransient<RegisterPatientWindow>();
-            services.AddTransient<RegisterPatientViewModel>();
-            services.AddTransient<SettingsWindow>();
-            services.AddTransient<SettingsViewModel>();
-            services.AddTransient<DebugWindow>();
-            services.AddSingleton<IVisitMapper, VisitMapper>();
-
-            Debug.WriteLine("=== ConfigureServices completed ===");
+                Debug.WriteLine($"❌ EXCEPTION in ConfigureServices: {ex.GetType().Name}");
+                Debug.WriteLine($"❌ Message: {ex.Message}");
+                Debug.WriteLine($"❌ Stack Trace: {ex.StackTrace}");
+                throw;
+            }
         }
 
         // -----------------------------
@@ -129,7 +284,7 @@ namespace WPF
         {
             try
             {
-                var currentDir = Directory.GetCurrentDirectory();
+                var currentDir = AppContext.BaseDirectory;
                 Debug.WriteLine($"Current directory: {currentDir}");
 
                 var config = new ConfigurationBuilder()
@@ -147,6 +302,38 @@ namespace WPF
             {
                 Debug.WriteLine($"BuildConfiguration EXCEPTION: {ex.Message}");
                 throw;
+            }
+        }
+
+        private static void LogUnhandledException(Exception? ex, string source)
+        {
+            try
+            {
+                var baseDir = AppContext.BaseDirectory;
+                var logs = Path.Combine(baseDir, "logs");
+                Directory.CreateDirectory(logs);
+                var file = Path.Combine(logs, $"crash_{DateTime.Now:yyyyMMdd_HHmmss}.log");
+
+                using (var sw = new StreamWriter(file, false))
+                {
+                    sw.WriteLine($"Source: {source}");
+                    sw.WriteLine($"Time: {DateTime.Now:O}");
+                    if (ex != null)
+                    {
+                        sw.WriteLine("Exception: ");
+                        sw.WriteLine(ex.ToString());
+                    }
+                    else
+                    {
+                        sw.WriteLine("Exception object was null.");
+                    }
+                }
+
+                Debug.WriteLine($"Unhandled exception logged to: {file}");
+            }
+            catch
+            {
+                // Swallow any logging failures to avoid escalation during crash handling
             }
         }
     }

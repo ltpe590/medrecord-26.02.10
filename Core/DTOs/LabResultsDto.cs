@@ -10,6 +10,7 @@
 
         // DTO-specific properties
         public string TestName { get; set; } = string.Empty;
+
         public string TestUnit { get; set; } = string.Empty;
         public string NormalRange { get; set; } = string.Empty;
     }

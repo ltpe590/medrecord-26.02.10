@@ -47,16 +47,10 @@ public sealed class VisitConfiguration : IEntityTypeConfiguration<Visit>
             .Navigation(v => v.Vitals)
             .IsRequired(false);
 
-        builder.OwnsMany(v => v.Entries, e =>
-        {
-            e.Property(x => x.SystemCode).HasMaxLength(20);
-        });
-
         // 🔹 Visit → VisitEntry (one-to-many)
         builder.HasMany(v => v.Entries)
                .WithOne()
                .HasForeignKey(e => e.VisitId)
                .OnDelete(DeleteBehavior.Cascade);
-
     }
 }

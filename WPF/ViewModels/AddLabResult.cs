@@ -1,9 +1,6 @@
 ﻿using Core.DTOs;
-using Core.Interfaces.Services;
-using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
-using System.Threading.Tasks;
 
 namespace WPF.ViewModels
 {
@@ -66,6 +63,7 @@ namespace WPF.ViewModels
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;
+
         private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
             => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }

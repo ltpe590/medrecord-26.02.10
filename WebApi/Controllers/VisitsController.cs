@@ -2,7 +2,6 @@
 using Core.DTOs;
 using Core.Entities;
 using Core.Interfaces.Services;
-using Core.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -83,7 +82,6 @@ namespace WebApi.Controllers
 
             return Ok(result);
         }
-
 
         // DELETE: api/Visits/5
         // Deletes a specific visit record.

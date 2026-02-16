@@ -208,7 +208,7 @@ namespace Core.Services
             {
                 PatientId = patient.PatientId,
                 Name = patient.Name,
-                Sex = patient.Sex.ToString(),
+                Sex = patient.Sex,  // Direct assignment - enum to enum
                 DateOfBirth = patient.DateOfBirth.ToDateTime(System.TimeOnly.MinValue),
                 PhoneNumber = patient.PhoneNumber?.Value,
                 BloodGroup = patient.BloodGroup,
@@ -220,10 +220,9 @@ namespace Core.Services
 
         private Patient MapDtoToEntity(PatientDto dto)
         {
-
             var patient = new Patient(
                 dto.Name,
-                MapSex(dto.Sex),
+                dto.Sex,  // Direct assignment - enum to enum
                 DateOnly.FromDateTime(dto.DateOfBirth));
 
             if (!string.IsNullOrWhiteSpace(dto.PhoneNumber) ||
@@ -244,16 +243,11 @@ namespace Core.Services
             return patient;
         }
 
-        private static Sex MapSex(string? sexValue) =>
-            Enum.TryParse<Sex>(sexValue, true, out var s) ? s : Sex.Unknown;
-
         private void UpdateEntityFromDto(PatientUpdateDto dto, Patient patient)
         {
             if (dto.Name != null || dto.Sex != null || dto.DateOfBirth.HasValue)
             {
-                var sex = dto.Sex != null
-                          ? Enum.TryParse<Sex>(dto.Sex, true, out var s) ? s : Sex.Unknown
-                          : patient.Sex;
+                var sex = dto.Sex ?? patient.Sex;  // Direct nullable enum usage
 
                 patient.UpdateIdentity(
                     dto.Name ?? patient.Name,
@@ -277,6 +271,6 @@ namespace Core.Services
             }
         }
 
-        #endregion
+        #endregion Helper Methods
     }
 }

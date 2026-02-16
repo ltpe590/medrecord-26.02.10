@@ -13,6 +13,7 @@ public sealed class ProfileService : IProfileService
 
         foreach (var profile in profiles)
         {
+            // Replace generic History with profile-specific history sections
             if (profile.ReplacesGenericHistory)
                 sections.Remove(ClinicalSections.History);
 
