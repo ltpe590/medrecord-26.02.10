@@ -11,11 +11,12 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Windows;
 using WPF.Mappers;
+using WPF.Helpers;
 using WPF.Views;
 
 namespace WPF.ViewModels
 {
-    public class MainWindowViewModel : INotifyPropertyChanged
+    public class MainWindowViewModel : BaseViewModel
     {
         #region Services and Dependencies
 
@@ -24,6 +25,7 @@ namespace WPF.ViewModels
         private readonly IVisitService _visitService;
         private readonly IConnectionService _connectionService;
         private readonly ILogger<MainWindowViewModel> _logger;
+        private readonly ILoggerFactory _loggerFactory;
         private readonly IAppSettingsService _settings;
 
         #endregion Services and Dependencies
@@ -34,7 +36,7 @@ namespace WPF.ViewModels
         private PatientViewModel? _selectedPatient;
         private List<TestCatalogDto> _availableTests = new();
         private TestCatalogDto? _selectedTest;
-        private string _authToken;
+        private string _authToken = string.Empty;
         private string? _username;
         private string? _password;
         private string _apiUrl = string.Empty;
@@ -44,11 +46,19 @@ namespace WPF.ViewModels
         private string _patientHistory = string.Empty;
         private string _selectedPatientInfo = string.Empty;
         private string _selectedPatientDetails = string.Empty;
-        private string _labResultValue = string.Empty;
         private string _diagnosis = string.Empty;
         private string _notes = string.Empty;
+        private string _presentingSymptoms    = string.Empty;
+        private string _historyAndExamination = string.Empty;
+        private string _imagingFindings       = string.Empty;
+        private string _aiSuggestions         = string.Empty;
+        private List<LabAttachment> _imagingAttachments = new();
+        private List<LabAttachment> _historyAttachments = new();
+        private bool   _isAiThinking;
         private decimal _temperature;
         private int _currentVisitId;
+        private int _lastLoadedPatientId;   // tracks which patient's history is currently shown
+        private VisitPageViewModel? _currentVisit;
         private int _bpSystolic;
         private int _bpDiastolic;
         private int _gravida;
@@ -58,6 +68,31 @@ namespace WPF.ViewModels
         private bool _visitStarting;
         private bool _isPatientExpanderOpen = true;
         private bool _isVisitExpanderOpen;
+
+        // ── Prescription fields ───────────────────────────────────────────────
+        private List<Core.DTOs.DrugCatalogDto> _availableDrugs = new();
+        private List<PrescriptionLineItem> _prescriptions = new();
+        private string _rxDrugText     = string.Empty;
+        private string _rxDose         = string.Empty;
+        private string _rxRoute        = string.Empty;
+        private string _rxFrequency    = string.Empty;
+        private string _rxDuration     = string.Empty;
+        private string _rxInstructions = string.Empty;
+
+        /// <summary>
+        /// Last-used prescription values per drug name (case-insensitive key).
+        /// Persisted only for the lifetime of the application session.
+        /// </summary>
+        private readonly Dictionary<string, PrescriptionLineItem> _lastUsedRx =
+            new(StringComparer.OrdinalIgnoreCase);
+
+        // ── Lab result fields ─────────────────────────────────────────────────
+        private List<LabResultLineItem> _labResults = new();
+        private string _labTestSearchText  = string.Empty;
+        private string _labResultValue     = string.Empty;
+        private string _labResultUnit      = string.Empty;
+        private string _labResultNotes     = string.Empty;
+        private int    _labSelectedTestId;
 
         #endregion Private Fields
 
@@ -75,7 +110,6 @@ namespace WPF.ViewModels
 
         public event Func<Task>? PatientSelected;
 
-        public event PropertyChangedEventHandler? PropertyChanged;
 
         #endregion Events
 
@@ -85,7 +119,6 @@ namespace WPF.ViewModels
         { get => _isPatientExpanderOpen; set { _isPatientExpanderOpen = value; OnPropertyChanged(); } }
         public bool IsVisitExpanderOpen
         { get => _isVisitExpanderOpen; set { _isVisitExpanderOpen = value; OnPropertyChanged(); } }
-        public bool CanAddLabResult => _currentVisitId > 0 && SelectedPatient != null;
         public bool CanSaveVisit => SelectedPatient != null && !string.IsNullOrWhiteSpace(Diagnosis);
 
         #endregion Boolean Properties
@@ -112,11 +145,33 @@ namespace WPF.ViewModels
 
         #endregion Status Properties
 
+        #region Culture / Layout Properties
+
+        public System.Windows.FlowDirection AppFlowDirection
+            => CultureHelper.GetFlowDirection(_settings.Language);
+
+        public string AppLanguageTag
+            => _settings.Language;
+
+        #endregion Culture / Layout Properties
+
         #region Patient Properties
 
         public ObservableCollection<PatientViewModel> Patients { get; } = new();
         public PatientViewModel? SelectedPatient
-        { get => _selectedPatient; set { if (_selectedPatient == value) return; _selectedPatient = value; OnPropertyChanged(); } }
+        {
+            get => _selectedPatient;
+            set
+            {
+                if (_selectedPatient == value) return;
+                _selectedPatient = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(HasSelectedPatient));
+                OnPropertyChanged(nameof(HasNoSelectedPatient));
+            }
+        }
+        public bool HasSelectedPatient => _selectedPatient != null;
+        public bool HasNoSelectedPatient => _selectedPatient == null;
         public string PatientSearchText
         { get => _patientSearchText; set { if (_patientSearchText != value) { _patientSearchText = value; OnPropertyChanged(nameof(PatientSearchText)); OnPropertyChanged(nameof(FilteredPatients)); } } }
         public string PatientHistory
@@ -131,8 +186,6 @@ namespace WPF.ViewModels
 
         #region Lab Properties
 
-        public string LabResultValue
-        { get => _labResultValue; set { if (_labResultValue != value) { _labResultValue = value; OnPropertyChanged(nameof(LabResultValue)); } } }
         public TestCatalogDto? SelectedTest
         { get => _selectedTest; set { if (_selectedTest != value) { _selectedTest = value; OnPropertyChanged(nameof(SelectedTest)); } } }
         public List<TestCatalogDto> AvailableTests
@@ -148,6 +201,31 @@ namespace WPF.ViewModels
         { get => _diagnosis; set { if (_diagnosis != value) { _diagnosis = value; OnPropertyChanged(nameof(Diagnosis)); OnPropertyChanged(nameof(CanSaveVisit)); } } }
         public string Notes
         { get => _notes; set { if (_notes != value) { _notes = value; OnPropertyChanged(nameof(Notes)); } } }
+        public string PresentingSymptoms
+        { get => _presentingSymptoms; set { if (_presentingSymptoms != value) { _presentingSymptoms = value; OnPropertyChanged(); } } }
+        public string HistoryAndExamination
+        { get => _historyAndExamination; set { if (_historyAndExamination != value) { _historyAndExamination = value; OnPropertyChanged(); } } }
+        public string ImagingFindings
+        { get => _imagingFindings; set { if (_imagingFindings != value) { _imagingFindings = value; OnPropertyChanged(); } } }
+        public string AiSuggestions
+        { get => _aiSuggestions; set { if (_aiSuggestions != value) { _aiSuggestions = value; OnPropertyChanged(); } } }
+        public bool IsAiThinking
+        { get => _isAiThinking; set { if (_isAiThinking != value) { _isAiThinking = value; OnPropertyChanged(); } } }
+
+        // ── Section attachments ───────────────────────────────────────────────
+        public List<LabAttachment> ImagingAttachments
+        {
+            get => _imagingAttachments;
+            set { _imagingAttachments = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasImagingAttachments)); }
+        }
+        public bool HasImagingAttachments => _imagingAttachments.Count > 0;
+
+        public List<LabAttachment> HistoryAttachments
+        {
+            get => _historyAttachments;
+            set { _historyAttachments = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasHistoryAttachments)); }
+        }
+        public bool HasHistoryAttachments => _historyAttachments.Count > 0;
         public decimal Temperature
         { get => _temperature; set { if (_temperature != value) { _temperature = value; OnPropertyChanged(nameof(Temperature)); } } }
         public int BPSystolic
@@ -162,6 +240,178 @@ namespace WPF.ViewModels
         { get => _abortion; set { if (_abortion != value) { _abortion = value; OnPropertyChanged(nameof(Abortion)); } } }
 
         #endregion Visit Properties
+
+        #region Prescription Properties
+
+        public List<Core.DTOs.DrugCatalogDto> AvailableDrugs
+        {
+            get => _availableDrugs;
+            set { _availableDrugs = value; OnPropertyChanged(); }
+        }
+
+        public List<PrescriptionLineItem> Prescriptions
+        {
+            get => _prescriptions;
+            set { _prescriptions = value; OnPropertyChanged(); }
+        }
+
+        public string RxDrugText
+        {
+            get => _rxDrugText;
+            set { _rxDrugText = value; OnPropertyChanged(); OnPropertyChanged(nameof(CanAddPrescription)); }
+        }
+        public string RxDose
+        {
+            get => _rxDose;
+            set { _rxDose = value; OnPropertyChanged(); OnPropertyChanged(nameof(CanAddPrescription)); }
+        }
+        public string RxRoute
+        {
+            get => _rxRoute;
+            set { _rxRoute = value; OnPropertyChanged(); }
+        }
+        public string RxFrequency
+        {
+            get => _rxFrequency;
+            set { _rxFrequency = value; OnPropertyChanged(); }
+        }
+        public string RxDuration
+        {
+            get => _rxDuration;
+            set { _rxDuration = value; OnPropertyChanged(); }
+        }
+        public string RxInstructions
+        {
+            get => _rxInstructions;
+            set { _rxInstructions = value; OnPropertyChanged(); }
+        }
+
+        public bool CanAddPrescription =>
+            !string.IsNullOrWhiteSpace(RxDrugText) && !string.IsNullOrWhiteSpace(RxDose);
+
+        public static IReadOnlyList<string> RouteOptions { get; } =
+            new[] { "Oral", "IV", "IM", "SC", "Topical", "Inhaled", "Sublingual", "Rectal", "Ophthalmic", "Otic", "Nasal" };
+
+        public static IReadOnlyList<string> FrequencyOptions { get; } =
+            new[] { "Once daily", "Twice daily (BID)", "Three times daily (TID)", "Four times daily (QID)",
+                    "Every 8 hours", "Every 6 hours", "Every 12 hours",
+                    "At bedtime (QHS)", "As needed (PRN)", "Stat (immediately)" };
+
+        /// <summary>Smart defaults by drug Form — auto-populates route/frequency/duration on drug selection.</summary>
+        public static readonly Dictionary<string, (string Route, string Frequency, string Duration)> FormDefaults =
+            new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Tablet"]      = ("Oral",       "Twice daily (BID)",       "7"),
+            ["Capsule"]     = ("Oral",       "Twice daily (BID)",       "7"),
+            ["Syrup"]       = ("Oral",       "Three times daily (TID)", "5"),
+            ["Suspension"]  = ("Oral",       "Twice daily (BID)",       "7"),
+            ["Injection"]   = ("IM",         "Once daily",              "3"),
+            ["Cream"]       = ("Topical",    "Twice daily (BID)",       "7"),
+            ["Ointment"]    = ("Topical",    "Once daily",              "7"),
+            ["Drops"]       = ("Ophthalmic", "Four times daily (QID)",  "5"),
+            ["Inhaler"]     = ("Inhaled",    "Twice daily (BID)",       "30"),
+            ["Patch"]       = ("Topical",    "Once daily",              "7"),
+            ["Suppository"] = ("Rectal",     "Once daily",              "3"),
+            ["Solution"]    = ("Oral",       "Three times daily (TID)", "5"),
+        };
+
+        #endregion Prescription Properties
+
+        #region Lab Result Properties
+
+        public List<LabResultLineItem> LabResults
+        {
+            get => _labResults;
+            set { _labResults = value; OnPropertyChanged(); }
+        }
+
+        public string LabTestSearchText
+        {
+            get => _labTestSearchText;
+            set { _labTestSearchText = value; OnPropertyChanged(); OnPropertyChanged(nameof(CanAddLabItem)); }
+        }
+
+        public string LabResultValue
+        {
+            get => _labResultValue;
+            set { _labResultValue = value; OnPropertyChanged(); OnPropertyChanged(nameof(CanAddLabItem)); }
+        }
+
+        public string LabResultUnit
+        {
+            get => _labResultUnit;
+            set { _labResultUnit = value; OnPropertyChanged(); }
+        }
+
+        public string LabResultNotes
+        {
+            get => _labResultNotes;
+            set { _labResultNotes = value; OnPropertyChanged(); }
+        }
+
+        public int LabSelectedTestId
+        {
+            get => _labSelectedTestId;
+            set { _labSelectedTestId = value; OnPropertyChanged(); OnPropertyChanged(nameof(CanAddLabItem)); }
+        }
+
+        /// <summary>Unit options populated when a test is selected from autocomplete.</summary>
+        public List<Core.DTOs.LabUnitOption> LabUnitOptions
+        {
+            get => _labUnitOptions;
+            set
+            {
+                _labUnitOptions = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(LabNormalRangeOptions));
+            }
+        }
+        private List<Core.DTOs.LabUnitOption> _labUnitOptions = new();
+
+        /// <summary>
+        /// All available normal-range strings for the current test,
+        /// shown as dropdown suggestions in the Normal Range ComboBox.
+        /// Each entry is formatted as "range  (unit)" so the doctor
+        /// can quickly identify which kit standard each range belongs to.
+        /// </summary>
+        public List<string> LabNormalRangeOptions =>
+            _labUnitOptions
+                .Where(o => !string.IsNullOrWhiteSpace(o.NormalRange))
+                .Select(o => string.IsNullOrWhiteSpace(o.Unit)
+                    ? o.NormalRange
+                    : $"{o.NormalRange}  ({o.Unit})")
+                .ToList();
+
+        /// <summary>The currently chosen unit+range option (from dropdown or custom).</summary>
+        public Core.DTOs.LabUnitOption? LabSelectedUnitOption
+        {
+            get => _labSelectedUnitOption;
+            set
+            {
+                _labSelectedUnitOption = value;
+                OnPropertyChanged();
+                if (value != null)
+                {
+                    LabResultUnit   = value.Unit;
+                    LabNormalRange  = value.NormalRange;
+                }
+            }
+        }
+        private Core.DTOs.LabUnitOption? _labSelectedUnitOption;
+
+        /// <summary>Editable normal range — pre-filled from catalog but overridable per-visit.</summary>
+        public string LabNormalRange
+        {
+            get => _labNormalRange;
+            set { _labNormalRange = value; OnPropertyChanged(); }
+        }
+        private string _labNormalRange = string.Empty;
+
+        public bool CanAddLabItem =>
+            !string.IsNullOrWhiteSpace(LabTestSearchText) &&
+            !string.IsNullOrWhiteSpace(LabResultValue);
+
+        #endregion Lab Result Properties
 
         #endregion Public Properties
 
@@ -216,15 +466,18 @@ namespace WPF.ViewModels
             try
             {
                 _logger.LogInformation("=== SetAuthTokenAndInitializeAsync CALLED ===");
-                _logger.LogInformation("   Auth Token Length: {Length}", authToken?.Length ?? 0);
+                _logger.LogInformation("   Auth Token Length: {Length}", authToken.Length);
                 
                 _authToken = authToken;
                 StatusMessage = "Loading patients...";
                 
-                _logger.LogInformation("⏳ Loading all patients...");
-                await LoadAllPatientsAsync();
-                
-                _logger.LogInformation("✅ Auth token set and patients loaded");
+                _logger.LogInformation("⏳ Loading all patients and catalogs...");
+                await Task.WhenAll(
+                    LoadAllPatientsAsync(),
+                    LoadDrugCatalogAsync(),
+                    LoadAvailableTestsAsync());
+
+                _logger.LogInformation("✅ Auth token set, patients and catalogs loaded");
                 StatusMessage = "Ready";
                 
                 // Trigger LoginCompleted event
@@ -303,18 +556,64 @@ namespace WPF.ViewModels
                     return;
                 }
 
-                _logger.LogInformation("Adding new patient: {PatientName}", patientDto.Name);
-
                 await _patientService.CreatePatientAsync(patientDto);
                 await LoadAllPatientsAsync();
-
-                _logger.LogInformation("Patient added successfully: {PatientName}", patientDto.Name);
-                this.ShowSuccess("Patient added successfully");
+                // Don't show success here - caller (ShowNewPatientDialogAsync) handles UI flow
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error adding patient: {PatientName}", patientDto?.Name);
                 this.ShowError(ex.Message, "Add Patient Error");
+                throw; // Re-throw so caller knows it failed
+            }
+        }
+
+        public async Task DeletePatientAsync(PatientViewModel patient)
+        {
+            try
+            {
+                _logger.LogInformation("Deleting patient: {PatientId} {Name}", patient.PatientId, patient.Name);
+                await _patientService.DeletePatientAsync(patient.PatientId);
+
+                // Deselect if this was the selected patient
+                if (SelectedPatient?.PatientId == patient.PatientId)
+                    SelectedPatient = null;
+
+                await LoadAllPatientsAsync();
+                ShowSuccess($"Patient \"{patient.Name}\" deleted.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting patient {PatientId}", patient.PatientId);
+                this.ShowError(ex.Message, "Delete Patient Error");
+            }
+        }
+
+        public async Task UpdatePatientAsync(int patientId, PatientCreateDto dto)
+        {
+            try
+            {
+                _logger.LogInformation("Updating patient: {PatientId}", patientId);
+                var updateDto = new Core.DTOs.PatientUpdateDto
+                {
+                    PatientId   = patientId,
+                    Name        = dto.Name,
+                    DateOfBirth = dto.DateOfBirth,
+                    Sex         = dto.Sex,
+                    PhoneNumber = dto.PhoneNumber,
+                    Address     = dto.Address,
+                    BloodGroup  = dto.BloodGroup,
+                    Allergies   = dto.Allergies
+                };
+
+                await _patientService.UpdatePatientAsync(updateDto);
+                await LoadAllPatientsAsync();
+                ShowSuccess("Patient updated successfully.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating patient {PatientId}", patientId);
+                this.ShowError(ex.Message, "Update Patient Error");
             }
         }
 
@@ -333,7 +632,21 @@ namespace WPF.ViewModels
                 // Use the Core PatientService directly
                 var patients = await _patientService.GetAllPatientsListAsync();
                 var viewModels = PatientMapper.ToViewModels(patients)
-                                              .OrderBy(p => p.Name);
+                                              .OrderBy(p => p.Name)
+                                              .ToList();
+
+                // Mark patients with a paused visit today
+                try
+                {
+                    var paused = await _visitService.GetPausedVisitsTodayAsync();
+                    var pausedIds = paused.Select(p => p.PatientId).ToHashSet();
+                    foreach (var vm in viewModels)
+                        vm.IsPaused = pausedIds.Contains(vm.PatientId);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Could not load paused visits for patient list");
+                }
 
                 Patients.Clear();
                 foreach (var vm in viewModels)
@@ -355,9 +668,9 @@ namespace WPF.ViewModels
             }
         }
 
-        public async Task SelectPatientAsync(PatientViewModel? patient)
+        public async Task SelectPatientAsync(PatientViewModel? patient, bool forceNewVisit = false)
         {
-            _logger.LogInformation("➡️ SelectPatientAsync ENTERED. PatientId={PatientId}", patient?.PatientId);
+            _logger.LogInformation("➡️ SelectPatientAsync ENTERED. PatientId={PatientId}, ForceNew={Force}", patient?.PatientId, forceNewVisit);
 
             if (patient == null)
             {
@@ -365,10 +678,19 @@ namespace WPF.ViewModels
                 return;
             }
 
-            // REMOVED: Don't return early if patient already selected
-            // We want to allow starting a new visit for the same patient
-            // if (SelectedPatient == patient)
-            //     return;
+            // Only skip if same patient AND we're not forcing a new visit
+            if (_lastLoadedPatientId == patient.PatientId && !forceNewVisit)
+            {
+                _logger.LogInformation("⏭ Same patient already loaded, skipping reload");
+                return;
+            }
+
+            // If forcing a new visit, reset the current visit ID so StartVisitIfNotAlreadyStarted creates a fresh one
+            if (forceNewVisit)
+            {
+                _currentVisitId = 0;
+                _visitStarting = false;
+            }
 
             SelectedPatient = patient;
 
@@ -406,56 +728,7 @@ namespace WPF.ViewModels
 
         #region Lab Methods
 
-        public async Task AddLabResultAsync()
-        {
-            if (SelectedTest == null)
-            {
-                ShowError("Please select a test first.", "Error");
-                return;
-            }
-
-            if (string.IsNullOrWhiteSpace(LabResultValue))
-            {
-                ShowError("Please enter a result value.", "Error");
-                return;
-            }
-
-            if (_currentVisitId == 0 || SelectedPatient == null)
-            {
-                ShowError("No active visit. Please start a visit first.", "Error");
-                return;
-            }
-
-            if (string.IsNullOrEmpty(_authToken))
-            {
-                ShowError("Please login first.", "Authentication Required");
-                return;
-            }
-
-            try
-            {
-                var dto = new LabResultCreateDto
-                {
-                    TestId = SelectedTest.TestId,
-                    VisitId = _currentVisitId,
-                    ResultValue = LabResultValue
-                };
-
-                await _userService.SaveLabResultAsync(dto, _settings.ApiBaseUrl, _authToken);
-
-                // Clear after successful save
-                LabResultValue = string.Empty;
-                SelectedTest = null;
-
-                ShowSuccess("Lab result saved successfully.");
-                _logger.LogInformation("Lab result saved for visit {VisitId}", _currentVisitId);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error saving lab result for visit {VisitId}", _currentVisitId);
-                ShowError($"Error saving lab result: {ex.Message}", "Save Error");
-            }
-        }
+        // AddLabResultAsync removed — replaced by synchronous AddLabResult() in Lab Result Methods region
 
         private async Task LoadAvailableTestsAsync()
         {
@@ -553,39 +826,32 @@ namespace WPF.ViewModels
 
                 StatusMessage = $"Starting visit for {patient.Name}...";
 
-                var visitRequest = new VisitSaveRequest
+                var startResult = await _visitService.StartOrResumeVisitAsync(
+                    patient.PatientId,
+                    "Visit started",
+                    "N/A",
+                    "N/A");
+
+                if (startResult.HasPausedVisit)
                 {
-                    PatientId = patient.PatientId,
-                    Diagnosis = "Initial visit started",
-                    SaveType = VisitSaveType.New,
-                    AuthToken = _authToken,
-                    Temperature = Temperature,
-                    BloodPressureSystolic = BPSystolic,
-                    BloodPressureDiastolic = BPDiastolic,
-                    Gravida = Gravida,
-                    Para = Para,
-                    Abortion = Abortion,
-                    Notes = "Visit initiated"
-                };
-
-                var result = await _visitService.SaveVisitAsync(visitRequest);
-
-                if (!result.Success || result.VisitId == null)
-                    throw new InvalidOperationException(
-                        result.Message ?? "Visit creation failed.");
-
-                _currentVisitId = result.VisitId.Value;
+                    // Resume the paused visit from a previous session
+                    await _visitService.ResumeVisitAsync(startResult.PausedVisitId!.Value);
+                    _currentVisitId = startResult.PausedVisitId.Value;
+                    StatusMessage = $"Resumed paused visit #{_currentVisitId}";
+                    ShowSuccess($"Resumed paused visit #{_currentVisitId} for {patient.Name}");
+                }
+                else
+                {
+                    _currentVisitId = startResult.VisitId;
+                    StatusMessage = $"Visit #{_currentVisitId} started";
+                    ShowSuccess($"Visit #{_currentVisitId} started for {patient.Name}");
+                }
 
                 VisitHeaderText = $"Visit – {patient.DisplayName}";
-                StatusMessage = $"Visit #{_currentVisitId} started";
+                _logger.LogInformation("Visit started. VisitId={VisitId}", _currentVisitId);
 
-                await LoadAvailableTestsAsync();
-
-                ShowSuccess($"Visit #{_currentVisitId} started successfully");
-
-                _logger.LogInformation(
-                    "✅ New visit created. VisitId={VisitId}",
-                    _currentVisitId);
+                try { await LoadAvailableTestsAsync(); }
+                catch (Exception testEx) { _logger.LogWarning(testEx, "Failed to load test catalog"); }
             }
             catch (Exception ex)
             {
@@ -596,13 +862,59 @@ namespace WPF.ViewModels
                     "❌ Error starting visit for PatientId={PatientId}",
                     patient?.PatientId);
 
-                ShowError($"Error starting visit: {ex.Message}", "Visit Error");
+                // Re-throw so SelectPatientAsync catch block can handle showing the error
+                throw;
+            }
+        }
+
+        public async Task PauseVisitAsync()
+        {
+            if (CurrentVisit == null)
+            {
+                ShowError("No active visit to pause.", "Error");
+                return;
+            }
+            try
+            {
+                await CurrentVisit.PauseVisitAsync();
+                ShowSuccess("Visit paused.");
+                _logger.LogInformation("Visit paused");
+                _currentVisitId = 0;
+                _visitStarting = false;
+                CurrentVisit = null;
+                StatusMessage = "Visit paused";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error pausing visit {VisitId}", _currentVisitId);
+                ShowError($"Error pausing visit: {ex.Message}", "Pause Error");
+            }
+        }
+
+        public async Task CompleteVisitAsync()
+        {
+            if (CurrentVisit == null || SelectedPatient == null)
+            {
+                ShowError("No active visit to complete.", "Error");
+                return;
+            }
+            try
+            {
+                var completedPatientId = SelectedPatient.PatientId;
+                await CurrentVisit.CompleteVisitAsync();
+                ShowSuccess("Visit completed.");
+                ClearVisitFormAndVisit();
+                await LoadPatientHistoryAsync(completedPatientId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error completing visit");
+                ShowError($"Error completing visit: {ex.Message}", "Complete Error");
             }
         }
 
         public async Task SaveVisitAsync()
-        {
-            _logger.LogInformation("=== SaveVisitAsync CALLED ===");
+        {            _logger.LogInformation("=== SaveVisitAsync CALLED ===");
             _logger.LogInformation("   CurrentVisitId: {VisitId}", _currentVisitId);
             _logger.LogInformation("   SelectedPatient: {Patient}", SelectedPatient?.Name ?? "NULL");
             _logger.LogInformation("   Diagnosis: '{Diagnosis}'", Diagnosis);
@@ -660,13 +972,24 @@ namespace WPF.ViewModels
                     throw new InvalidOperationException(result.Message);
                 }
 
+                // Save lab results with their visit-specific unit + normal range
+                await SaveLabResultsAsync(_currentVisitId);
+
+                // End the visit so it appears in history (EndedAt != null)
+                await _visitService.EndVisitAsync(_currentVisitId);
+
                 StatusMessage = $"Visit #{_currentVisitId} saved successfully";
                 _logger.LogInformation("Visit {VisitId} saved for patient {PatientId}",
                     _currentVisitId, SelectedPatient.PatientId);
 
+                var savedPatientId = SelectedPatient.PatientId;
+
                 // Clear form after saving
                 ClearVisitForm();
-                ShowSuccess($"Visit #{_currentVisitId} saved successfully");
+                ShowSuccess($"Visit saved successfully");
+
+                // Refresh history so the new visit appears immediately
+                await LoadPatientHistoryAsync(savedPatientId);
             }
             catch (Exception ex)
             {
@@ -678,10 +1001,26 @@ namespace WPF.ViewModels
             SaveVisitRequested?.Invoke();
         }
 
+        /// <summary>Resets CurrentVisit and clears the visit tracking fields on this ViewModel.</summary>
+        private void ClearVisitFormAndVisit()
+        {
+            CurrentVisit?.ClearVisitForm();
+            CurrentVisit    = null;
+            _currentVisitId = 0;
+            _visitStarting  = false;
+            StatusMessage   = "Ready";
+        }
+
         private void ClearVisitForm()
         {
             Diagnosis = string.Empty;
             Notes = string.Empty;
+            PresentingSymptoms    = string.Empty;
+            HistoryAndExamination = string.Empty;
+            ImagingFindings       = string.Empty;
+            AiSuggestions         = string.Empty;
+            ImagingAttachments = new List<LabAttachment>();
+            HistoryAttachments = new List<LabAttachment>();
             Temperature = 0;
             BPSystolic = 0;
             BPDiastolic = 0;
@@ -690,10 +1029,89 @@ namespace WPF.ViewModels
             Abortion = 0;
             LabResultValue = string.Empty;
             SelectedTest = null;
+            Prescriptions = new List<PrescriptionLineItem>();
+            ClearRxInputs();
+            LabResults = new List<LabResultLineItem>();
+            ClearLabInputs();
 
             // Reset visit ID after saving
             _currentVisitId = 0;
             StatusMessage = "Ready";
+        }
+
+        /// <summary>
+        /// Assembles all current visit data into a structured clinical context string
+        /// suitable for sending to an AI model for differential diagnosis assistance.
+        /// </summary>
+        public string BuildClinicalContext()
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine("=== PATIENT CLINICAL CONTEXT ===");
+            sb.AppendLine();
+
+            // Patient demographics
+            if (SelectedPatient != null)
+            {
+                sb.AppendLine($"Patient: {SelectedPatient.Name}");
+                sb.AppendLine($"Age: {SelectedPatient.Age} years");
+                sb.AppendLine($"Sex: {SelectedPatient.SexDisplay}");
+                if (!string.IsNullOrWhiteSpace(SelectedPatient.BloodGroup))
+                    sb.AppendLine($"Blood Group: {SelectedPatient.BloodGroup}");
+                if (!string.IsNullOrWhiteSpace(SelectedPatient.Allergies))
+                    sb.AppendLine($"Known Allergies: {SelectedPatient.Allergies}");
+            }
+
+            // Vitals
+            sb.AppendLine();
+            sb.AppendLine("VITALS:");
+            if (Temperature > 0)  sb.AppendLine($"  Temperature: {Temperature} °C");
+            if (BPSystolic > 0)   sb.AppendLine($"  Blood Pressure: {BPSystolic}/{BPDiastolic} mmHg");
+
+            // Clinical narrative fields
+            if (!string.IsNullOrWhiteSpace(PresentingSymptoms))
+            {
+                sb.AppendLine();
+                sb.AppendLine("PRESENTING SYMPTOMS:");
+                sb.AppendLine(PresentingSymptoms.Trim());
+            }
+            if (!string.IsNullOrWhiteSpace(HistoryAndExamination))
+            {
+                sb.AppendLine();
+                sb.AppendLine("HISTORY AND EXAMINATION:");
+                sb.AppendLine(HistoryAndExamination.Trim());
+            }
+            if (!string.IsNullOrWhiteSpace(ImagingFindings))
+            {
+                sb.AppendLine();
+                sb.AppendLine("IMAGING / INVESTIGATIONS:");
+                sb.AppendLine(ImagingFindings.Trim());
+            }
+            if (!string.IsNullOrWhiteSpace(Diagnosis))
+            {
+                sb.AppendLine();
+                sb.AppendLine("WORKING DIAGNOSIS:");
+                sb.AppendLine(Diagnosis.Trim());
+            }
+            if (!string.IsNullOrWhiteSpace(Notes))
+            {
+                sb.AppendLine();
+                sb.AppendLine("NOTES:");
+                sb.AppendLine(Notes.Trim());
+            }
+
+            // Lab results
+            if (LabResults.Count > 0)
+            {
+                sb.AppendLine();
+                sb.AppendLine("LAB RESULTS:");
+                foreach (var r in LabResults)
+                {
+                    var ref_ = string.IsNullOrWhiteSpace(r.NormalRange) ? "" : $" (ref: {r.NormalRange})";
+                    sb.AppendLine($"  {r.TestName}: {r.ResultValue} {r.Unit}{ref_}");
+                }
+            }
+
+            return sb.ToString();
         }
 
         public void PrintVisitSummary(PatientViewModel? selectedPatient)
@@ -762,6 +1180,9 @@ namespace WPF.ViewModels
                 var settingsWindow = App.Services.GetRequiredService<SettingsWindow>();
                 settingsWindow.Owner = Application.Current.MainWindow;
 
+                // Pass current auth token so Lab/Pharmacy tabs can load catalogs
+                settingsWindow.SetAuthToken(_authToken);
+
                 if (settingsWindow.ShowDialog() == true)
                 {
                     await LoadSettings();
@@ -790,6 +1211,7 @@ namespace WPF.ViewModels
             SelectedPatientInfo = string.Empty;
             SelectedPatientDetails = string.Empty;
             PatientHistory = "No patient selected";
+            _lastLoadedPatientId = 0;
         }
 
         private void UpdateSelectedPatientInfo(PatientViewModel patient)
@@ -815,6 +1237,8 @@ namespace WPF.ViewModels
                 PatientHistory = visits?.Count > 0
                     ? string.Join("\n\n", visits.Select(v => mapper.ToDisplayString(v)))
                     : "No visit history.";
+
+                _lastLoadedPatientId = patientId;
             }
             catch (Exception ex)
             {
@@ -955,15 +1379,468 @@ namespace WPF.ViewModels
 
         #endregion Paused Visits Helpers
 
+        #region Prescription Methods
+
+        public void AddPrescription()
+        {
+            if (!CanAddPrescription) return;
+
+            var matched = _availableDrugs.FirstOrDefault(
+                d => string.Equals(d.BrandName, RxDrugText.Trim(), StringComparison.OrdinalIgnoreCase));
+
+            var entry = new PrescriptionLineItem
+            {
+                DrugId       = matched?.DrugId ?? 0,
+                DrugName     = matched?.BrandName ?? RxDrugText.Trim(),
+                Form         = matched?.Form,
+                Dose         = RxDose.Trim(),
+                Route        = RxRoute,
+                Frequency    = RxFrequency,
+                DurationDays = RxDuration.Trim(),
+                Instructions = RxInstructions.Trim()
+            };
+
+            // ── Remember these choices as "last used" for this drug ──────────
+            _lastUsedRx[entry.DrugName] = entry;
+
+            var updated = new List<PrescriptionLineItem>(Prescriptions) { entry };
+            Prescriptions = updated;
+            ClearRxInputs();
+            StatusMessage = "Prescription added";
+        }
+
+        public void RemovePrescription(PrescriptionLineItem item)
+        {
+            var updated = new List<PrescriptionLineItem>(Prescriptions);
+            updated.Remove(item);
+            Prescriptions = updated;
+            StatusMessage = "Prescription removed";
+        }
+
+        /// <summary>
+        /// Called when the user picks a drug from the autocomplete list.
+        /// Fills dose, route, frequency, duration, and instructions using:
+        ///   1. Last-used values for this drug (highest priority)
+        ///   2. Catalog-stored defaults (Route, Frequency, Instructions on DrugCatalogDto)
+        ///   3. FormDefaults keyed by drug Form (e.g. Tablet → Oral / BID / 7 days)
+        /// Only overwrites a field if it is currently empty, so the user
+        /// can still type first and then pick without losing their input.
+        /// Pass <paramref name="overwrite"/> = true to always replace all fields.
+        /// </summary>
+        public void AutoFillFromDrug(DrugCatalogDto drug, bool overwrite = false)
+        {
+            RxDrugText = drug.BrandName;
+
+            // Tier 1 – last used
+            _lastUsedRx.TryGetValue(drug.BrandName, out var last);
+
+            // Tier 3 – form-based defaults (fallback)
+            FormDefaults.TryGetValue(drug.Form ?? string.Empty, out var formDef);
+
+            string? Best(string? lastVal, string? catalogVal, string? formVal)
+            {
+                if (!string.IsNullOrWhiteSpace(lastVal))    return lastVal;
+                if (!string.IsNullOrWhiteSpace(catalogVal)) return catalogVal;
+                if (!string.IsNullOrWhiteSpace(formVal))    return formVal;
+                return null;
+            }
+
+            var dose         = Best(last?.Dose,         drug.DosageStrength, null);
+            var route        = Best(last?.Route,        drug.Route,          formDef.Route);
+            var frequency    = Best(last?.Frequency,    drug.Frequency,      formDef.Frequency);
+            var duration     = Best(last?.DurationDays, null,                formDef.Duration);
+            var instructions = Best(last?.Instructions, drug.Instructions,   null);
+
+            if (overwrite || string.IsNullOrWhiteSpace(RxDose))         RxDose         = dose         ?? string.Empty;
+            if (overwrite || string.IsNullOrWhiteSpace(RxRoute))        RxRoute        = route        ?? string.Empty;
+            if (overwrite || string.IsNullOrWhiteSpace(RxFrequency))    RxFrequency    = frequency    ?? string.Empty;
+            if (overwrite || string.IsNullOrWhiteSpace(RxDuration))     RxDuration     = duration     ?? string.Empty;
+            if (overwrite || string.IsNullOrWhiteSpace(RxInstructions)) RxInstructions = instructions ?? string.Empty;
+
+            // Show where the values came from
+            StatusMessage = last != null
+                ? $"✓ Auto-filled from last use of {drug.BrandName}"
+                : !string.IsNullOrWhiteSpace(route) || !string.IsNullOrWhiteSpace(dose)
+                    ? $"✓ Auto-filled defaults for {drug.BrandName}"
+                    : $"Selected: {drug.BrandName}";
+        }
+
+        public async Task AddNewDrugAndPrescribeAsync(string brandName, string? form, string? strength,
+            string? route = null, string? frequency = null, string? instructions = null)
+        {
+            if (string.IsNullOrWhiteSpace(brandName)) return;
+
+            try
+            {
+                StatusMessage = "Saving new drug to catalog...";
+
+                using var http = new HttpClient();
+                http.DefaultRequestHeaders.Authorization =
+                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _authToken);
+
+                var dto = new
+                {
+                    BrandName     = brandName.Trim(),
+                    Form          = form?.Trim(),
+                    DosageStrength= strength?.Trim(),
+                    Route         = route?.Trim(),
+                    Frequency     = frequency?.Trim(),
+                    Instructions  = instructions?.Trim()
+                };
+                var json    = System.Text.Json.JsonSerializer.Serialize(dto);
+                var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+                var resp    = await http.PostAsync($"{_settings.ApiBaseUrl}/api/DrugCatalogs", content);
+                resp.EnsureSuccessStatusCode();
+
+                // Refresh catalog
+                AvailableDrugs = await _userService.GetDrugCatalogAsync(_settings.ApiBaseUrl, _authToken);
+
+                // Pre-fill the drug name field so user just fills in dose details
+                var newDrug = AvailableDrugs.FirstOrDefault(
+                    d => string.Equals(d.BrandName, brandName.Trim(), StringComparison.OrdinalIgnoreCase));
+
+                RxDrugText = newDrug?.BrandName ?? brandName.Trim();
+                if (newDrug != null)
+                    AutoFillFromDrug(newDrug, overwrite: true);
+                else if (!string.IsNullOrWhiteSpace(strength))
+                    RxDose = strength;
+
+                StatusMessage = $"\u2713 '{brandName}' added to catalog \u2014 fill dose details and click Add";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to save new drug to catalog");
+                ShowError($"Could not save drug to catalog:\n{ex.Message}", "Catalog Error");
+            }
+        }
+
+        private async Task LoadDrugCatalogAsync()
+        {
+            try
+            {
+                if (!string.IsNullOrEmpty(_authToken))
+                    AvailableDrugs = await _userService.GetDrugCatalogAsync(_settings.ApiBaseUrl, _authToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to load drug catalog");
+            }
+        }
+
+        public void ClearRxInputs()
+        {
+            RxDrugText    = string.Empty;
+            RxDose        = string.Empty;
+            RxRoute       = string.Empty;
+            RxFrequency   = string.Empty;
+            RxDuration    = string.Empty;
+            RxInstructions = string.Empty;
+        }
+
+        #endregion Prescription Methods
+
+        #region Lab Result Methods
+
+        public void AddLabResult()
+        {
+            if (!CanAddLabItem) return;
+
+            var matched = _availableTests.FirstOrDefault(
+                t => string.Equals(t.TestName, LabTestSearchText.Trim(), StringComparison.OrdinalIgnoreCase));
+
+            var entry = new LabResultLineItem
+            {
+                TestId      = matched?.TestId ?? 0,
+                TestName    = matched?.TestName ?? LabTestSearchText.Trim(),
+                ResultValue = LabResultValue.Trim(),
+                Unit        = string.IsNullOrWhiteSpace(LabResultUnit) ? (matched?.TestUnit ?? string.Empty) : LabResultUnit.Trim(),
+                NormalRange = string.IsNullOrWhiteSpace(LabNormalRange) ? (matched?.NormalRange ?? string.Empty) : LabNormalRange.Trim(),
+                Notes       = LabResultNotes.Trim(),
+                UnitOptions = matched?.UnitOptions ?? new List<Core.DTOs.LabUnitOption>()
+            };
+
+            LabResults = new List<LabResultLineItem>(LabResults) { entry };
+            ClearLabInputs();
+            StatusMessage = "Lab result added";
+        }
+
+        public void RemoveLabResult(LabResultLineItem item)
+        {
+            LabResults = LabResults.Where(x => x != item).ToList();
+            StatusMessage = "Lab result removed";
+        }
+
+        /// <summary>
+        /// Saves all current lab results for the given visitId to the API.
+        /// Deletes any previously saved results first (replace-all approach),
+        /// then posts each item with its visit-specific Unit and NormalRange.
+        /// </summary>
+        private async Task SaveLabResultsAsync(int visitId)
+        {
+            if (LabResults.Count == 0) return;
+
+            using var http = new HttpClient();
+            http.DefaultRequestHeaders.Authorization =
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _authToken);
+
+            // Delete existing results for this visit so we don't accumulate duplicates on re-save
+            await http.DeleteAsync($"{_settings.ApiBaseUrl}/api/LabResults/visit/{visitId}");
+
+            // Post each result with the unit + normal range chosen at time of this visit
+            foreach (var lab in LabResults)
+            {
+                var dto = new
+                {
+                    TestId      = lab.TestId,
+                    VisitId     = visitId,
+                    ResultValue = lab.ResultValue,
+                    Unit        = lab.Unit,
+                    NormalRange = lab.NormalRange,
+                    Notes       = lab.Notes
+                };
+                var json    = System.Text.Json.JsonSerializer.Serialize(dto);
+                var content = new StringContent(json, System.Text.Encoding.UTF8, "application/json");
+                var resp    = await http.PostAsync($"{_settings.ApiBaseUrl}/api/LabResults", content);
+                resp.EnsureSuccessStatusCode();
+            }
+        }
+
+        public void AddSectionAttachment(string section, string filePath)
+        {
+            if (!System.IO.File.Exists(filePath)) return;
+            var att = BuildAttachment(filePath);
+            if (section == "imaging")
+            {
+                ImagingAttachments = new List<LabAttachment>(_imagingAttachments) { att };
+                StatusMessage = $"Imaging: attached {att.FileName}";
+            }
+            else
+            {
+                HistoryAttachments = new List<LabAttachment>(_historyAttachments) { att };
+                StatusMessage = $"History: attached {att.FileName}";
+            }
+        }
+
+        public void RemoveSectionAttachment(string section, LabAttachment att)
+        {
+            if (section == "imaging")
+                ImagingAttachments = _imagingAttachments.Where(a => a != att).ToList();
+            else
+                HistoryAttachments = _historyAttachments.Where(a => a != att).ToList();
+        }
+
+        private static LabAttachment BuildAttachment(string filePath)
+        {
+            var att = new LabAttachment { FilePath = filePath };
+            if (att.IsImage)
+            {
+                try
+                {
+                    var bmp = new System.Windows.Media.Imaging.BitmapImage();
+                    bmp.BeginInit();
+                    bmp.UriSource        = new Uri(filePath);
+                    bmp.DecodePixelWidth = 120;
+                    bmp.CacheOption      = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
+                    bmp.EndInit();
+                    bmp.Freeze();
+                    att.Thumbnail = bmp;
+                }
+                catch { }
+            }
+            return att;
+        }
+
+        public void AddAttachmentToLabResult(LabResultLineItem item, string filePath)
+        {
+            if (!System.IO.File.Exists(filePath)) return;
+            var attachment = BuildAttachment(filePath);
+            item.AddAttachment(attachment);
+            LabResults    = new List<LabResultLineItem>(LabResults);
+            StatusMessage = $"Attached: {attachment.FileName}";
+        }
+
+        public void RemoveAttachmentFromLabResult(LabResultLineItem item, LabAttachment attachment)
+        {
+            item.RemoveAttachment(attachment);
+            LabResults = new List<LabResultLineItem>(LabResults);
+        }
+
+        private void ClearLabInputs()
+        {
+            LabTestSearchText    = string.Empty;
+            LabResultValue       = string.Empty;
+            LabResultUnit        = string.Empty;
+            LabResultNotes       = string.Empty;
+            LabNormalRange       = string.Empty;
+            LabSelectedTestId    = 0;
+            LabUnitOptions       = new List<Core.DTOs.LabUnitOption>();
+            LabSelectedUnitOption= null;
+        }
+
+        public async Task AddNewLabTestToCatalogAsync(string testName,
+            string unitSI, string rangeSI, string unitImp, string rangeImp)
+        {
+            if (string.IsNullOrWhiteSpace(testName)) return;
+            try
+            {
+                StatusMessage = "Saving new test to catalog...";
+                using var http = new HttpClient();
+                http.DefaultRequestHeaders.Authorization =
+                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _authToken);
+
+                var dto = new
+                {
+                    TestName            = testName.Trim(),
+                    TestUnit            = unitSI.Trim(),
+                    NormalRange         = rangeSI.Trim(),
+                    UnitImperial        = string.IsNullOrWhiteSpace(unitImp)  ? null : unitImp.Trim(),
+                    NormalRangeImperial = string.IsNullOrWhiteSpace(rangeImp) ? null : rangeImp.Trim()
+                };
+                var content = new StringContent(
+                    System.Text.Json.JsonSerializer.Serialize(dto),
+                    System.Text.Encoding.UTF8, "application/json");
+                var resp = await http.PostAsync($"{_settings.ApiBaseUrl}/api/TestCatalogs", content);
+                resp.EnsureSuccessStatusCode();
+
+                // Refresh local catalog
+                AvailableTests = await _userService.GetTestCatalogAsync(_settings.ApiBaseUrl, _authToken);
+                LabTestSearchText = testName.Trim();
+                if (!string.IsNullOrWhiteSpace(unitSI))   LabResultUnit = unitSI;
+                else if (!string.IsNullOrWhiteSpace(unitImp)) LabResultUnit = unitImp;
+
+                StatusMessage = $"✓ '{testName}' added to catalog";
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to add test to catalog");
+                ShowError($"Could not save test:\n{ex.Message}", "Catalog Error");
+            }
+        }
+
+        #endregion Lab Result Methods
+
         #endregion Visit Helpers
 
-        #region INotifyPropertyChanged Implementation
-
-        protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-            => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-
-        #endregion INotifyPropertyChanged Implementation
 
         #endregion Helper Methods
     }
+
+    /// <summary>One row in the visit prescription list.</summary>
+    public sealed class PrescriptionLineItem
+    {
+        public int     DrugId       { get; set; }
+        public string  DrugName     { get; set; } = string.Empty;
+        public string? Form         { get; set; }
+        public string  Dose         { get; set; } = string.Empty;
+        public string  Route        { get; set; } = string.Empty;
+        public string  Frequency    { get; set; } = string.Empty;
+        public string  DurationDays { get; set; } = string.Empty;
+        public string  Instructions { get; set; } = string.Empty;
+    }
+
+    /// <summary>An image or scanned document attached to a lab result.</summary>
+    public sealed class LabAttachment : System.ComponentModel.INotifyPropertyChanged
+    {
+        private System.Windows.Media.ImageSource? _thumbnail;
+
+        public string  FilePath    { get; set; } = string.Empty;
+        public string  FileName    => System.IO.Path.GetFileName(FilePath);
+        public bool    IsImage     => IsImageExtension(FilePath);
+
+        public System.Windows.Media.ImageSource? Thumbnail
+        {
+            get => _thumbnail;
+            set { _thumbnail = value; PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(nameof(Thumbnail))); }
+        }
+
+        private static bool IsImageExtension(string path)
+        {
+            var ext = System.IO.Path.GetExtension(path).ToLowerInvariant();
+            return ext is ".jpg" or ".jpeg" or ".png" or ".bmp" or ".gif" or ".tiff" or ".tif";
+        }
+
+        public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
+    }
+
+    /// <summary>One row in the visit lab-results list.</summary>
+    public sealed class LabResultLineItem : System.ComponentModel.INotifyPropertyChanged
+    {
+        private List<LabAttachment> _attachments = new();
+        private string _resultValue  = string.Empty;
+        private string _unit         = string.Empty;
+        private string _normalRange  = string.Empty;
+        private string _notes        = string.Empty;
+        private List<Core.DTOs.LabUnitOption> _unitOptions = new();
+
+        public int    TestId   { get; set; }
+        public string TestName { get; set; } = string.Empty;
+
+        public string ResultValue
+        {
+            get => _resultValue;
+            set { _resultValue = value; Notify(); }
+        }
+        public string Unit
+        {
+            get => _unit;
+            set { _unit = value; Notify(); }
+        }
+        public string NormalRange
+        {
+            get => _normalRange;
+            set { _normalRange = value; Notify(); }
+        }
+        public string Notes
+        {
+            get => _notes;
+            set { _notes = value; Notify(); }
+        }
+
+        /// <summary>Unit options populated from catalog (SI + imperial). Editable if test not in catalog.</summary>
+        public List<Core.DTOs.LabUnitOption> UnitOptions
+        {
+            get => _unitOptions;
+            set { _unitOptions = value; Notify(); Notify(nameof(HasUnitOptions)); }
+        }
+        public bool HasUnitOptions => _unitOptions.Count > 1;
+
+        public void SelectUnitOption(Core.DTOs.LabUnitOption opt)
+        {
+            Unit = opt.Unit;
+            NormalRange = opt.NormalRange;
+        }
+
+        public List<LabAttachment> Attachments
+        {
+            get => _attachments;
+            set { _attachments = value; Notify(); Notify(nameof(HasAttachments)); }
+        }
+        public bool HasAttachments => _attachments.Count > 0;
+
+        public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
+        private void Notify([System.Runtime.CompilerServices.CallerMemberName] string? n = null)
+            => PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(n));
+
+        public void AddAttachment(LabAttachment a)
+        {
+            _attachments = new List<LabAttachment>(_attachments) { a };
+            Notify(nameof(Attachments)); Notify(nameof(HasAttachments));
+        }
+        public void RemoveAttachment(LabAttachment a)
+        {
+            _attachments = _attachments.Where(x => x != a).ToList();
+            Notify(nameof(Attachments)); Notify(nameof(HasAttachments));
+        }
+    }
 }
+
+
+
+
+
+
+
+
+
+
+

@@ -138,7 +138,7 @@ namespace Core.Http
             var requestJson = JsonSerializer.Serialize(data, _jsonOptions);
             request.Content = new StringContent(requestJson, System.Text.Encoding.UTF8, "application/json");
 
-            _logger.LogInformation("Sending API Request with payload: {RequestJson}", requestJson);
+                        _logger.LogInformation("Sending API Request with payload: {RequestJson}", requestJson);
 
             try
             {

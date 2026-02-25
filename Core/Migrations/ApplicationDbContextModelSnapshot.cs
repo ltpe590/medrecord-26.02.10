@@ -142,7 +142,7 @@ namespace Core.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<int>("Sex")
                         .HasColumnType("int");
@@ -154,6 +154,10 @@ namespace Core.Migrations
                         .HasColumnType("datetime2");
 
                     b.HasKey("PatientId");
+
+                    b.HasIndex("Name", "DateOfBirth", "IsDeleted")
+                        .IsUnique()
+                        .HasDatabaseName("IX_Patients_Name_DateOfBirth_IsDeleted");
 
                     b.ToTable("Patients", (string)null);
                 });
@@ -287,6 +291,12 @@ namespace Core.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<string>("Instructions")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Route")
+                        .HasColumnType("nvarchar(max)");
+
                     b.HasKey("DrugId");
 
                     b.HasIndex("BrandName")
@@ -339,6 +349,10 @@ namespace Core.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<string>("NormalRangeImperial")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
                     b.Property<string>("TestName")
                         .IsRequired()
                         .HasMaxLength(100)
@@ -346,6 +360,10 @@ namespace Core.Migrations
 
                     b.Property<string>("TestUnit")
                         .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("UnitImperial")
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
@@ -360,23 +378,29 @@ namespace Core.Migrations
                         new
                         {
                             TestId = 1,
-                            NormalRange = "4.5-11.0",
+                            NormalRange = "4.5–11.0",
+                            NormalRangeImperial = "4500–11000",
                             TestName = "Complete Blood Count",
-                            TestUnit = "cells/µL"
+                            TestUnit = "×10⁹/L",
+                            UnitImperial = "cells/µL"
                         },
                         new
                         {
                             TestId = 2,
-                            NormalRange = "70-100",
+                            NormalRange = "3.9–6.1",
+                            NormalRangeImperial = "70–110",
                             TestName = "Glucose Fasting",
-                            TestUnit = "mg/dL"
+                            TestUnit = "mmol/L",
+                            UnitImperial = "mg/dL"
                         },
                         new
                         {
                             TestId = 3,
-                            NormalRange = "<200",
+                            NormalRange = "<5.2",
+                            NormalRangeImperial = "<200",
                             TestName = "Cholesterol Total",
-                            TestUnit = "mg/dL"
+                            TestUnit = "mmol/L",
+                            UnitImperial = "mg/dL"
                         });
                 });
 

@@ -21,7 +21,12 @@ namespace Core.Data.Configurations
             builder.Property(e => e.NormalRange)
                    .HasMaxLength(100);
 
-            // Index for performance
+            builder.Property(e => e.UnitImperial)
+                   .HasMaxLength(50);
+
+            builder.Property(e => e.NormalRangeImperial)
+                   .HasMaxLength(100);
+
             builder.HasIndex(e => e.TestName)
                    .IsUnique();
         }

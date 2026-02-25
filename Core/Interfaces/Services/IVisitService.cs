@@ -17,6 +17,8 @@ namespace Core.Interfaces.Services
 
         Task PauseVisitAsync(int visitId);
 
+        Task ResumeVisitAsync(int visitId);
+
         Task EndVisitAsync(int visitId);
 
         Task<Visit?> GetActiveVisitForPatientAsync(int patientId);

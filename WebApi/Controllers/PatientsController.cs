@@ -53,34 +53,25 @@ namespace WebApi.Controllers
             return NoContent();
         }
 
-        [HttpPut("{id}")]
-        public async Task<IActionResult> PutPatient(int id, Patient patient)
-        {
-            if (id != patient.PatientId)
-            {
-                return BadRequest();
-            }
-
-            if (!await _patientRepository.ExistsAsync(id))
-            {
-                return NotFound();
-            }
-
-            await _patientRepository.UpdateAsync(patient);
-            return NoContent();
-        }
+        // NOTE: Raw-entity PUT(id, Patient) removed — it bypassed all validation.
 
         // POST: api/Patients
         [HttpPost]
-        public async Task<ActionResult<Patient>> PostPatient(PatientCreateDto dto)
+        public async Task<ActionResult<PatientDto>> PostPatient(PatientCreateDto dto)
         {
-            // Note: Validation is done in dto
+            // Duplicate guard: same name + same DOB (or same name when DOB is absent)
+            var existing = await _patientRepository.GetAllAsync();
+            var duplicate = existing.Any(p =>
+                string.Equals(p.Name, dto.Name, StringComparison.OrdinalIgnoreCase) &&
+                (!dto.DateOfBirth.HasValue || p.DateOfBirth == dto.DateOfBirth.Value));
 
-            // Delegate the creation logic to the mapping service
+            if (duplicate)
+                return Conflict($"A patient named '{dto.Name}'{(dto.DateOfBirth.HasValue ? $" born {dto.DateOfBirth}" : "")} already exists.");
+
             var patient = _patientMappingService.MapToDomain(dto);
-
             await _patientRepository.AddAsync(patient);
-            return CreatedAtAction(nameof(GetPatient), new { id = patient.PatientId }, patient);
+            var patientDto = _patientMappingService.MapToDto(patient);
+            return CreatedAtAction(nameof(GetPatient), new { id = patientDto.PatientId }, patientDto);
         }
 
         // DELETE: api/Patients

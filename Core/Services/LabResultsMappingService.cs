@@ -17,14 +17,15 @@ namespace Core.Services
         {
             return new LabResultsDto
             {
-                LabId = domainModel.LabId,
+                LabId       = domainModel.LabId,
+                TestId      = domainModel.TestId,
+                VisitId     = domainModel.VisitId,
                 ResultValue = domainModel.ResultValue,
-                VisitId = domainModel.VisitId,
-                CreatedAt = domainModel.CreatedAt,
-                TestId = domainModel.TestId,
-                TestName = domainModel.TestCatalog?.TestName ?? string.Empty,
-                TestUnit = domainModel.TestCatalog?.TestUnit ?? string.Empty,
-                NormalRange = domainModel.TestCatalog?.NormalRange ?? string.Empty
+                Unit        = domainModel.Unit,
+                NormalRange = domainModel.NormalRange,
+                Notes       = domainModel.Notes,
+                CreatedAt   = domainModel.CreatedAt,
+                TestName    = domainModel.TestCatalog?.TestName ?? string.Empty
             };
         }
 
@@ -35,11 +36,14 @@ namespace Core.Services
 
             return new LabResults
             {
-                LabId = dto.LabId,
+                LabId       = dto.LabId,
+                TestId      = dto.TestId,
+                VisitId     = dto.VisitId,
                 ResultValue = dto.ResultValue,
-                VisitId = dto.VisitId,
-                CreatedAt = dto.CreatedAt,
-                TestId = dto.TestId,
+                Unit        = dto.Unit,
+                NormalRange = dto.NormalRange,
+                Notes       = dto.Notes,
+                CreatedAt   = dto.CreatedAt,
                 TestCatalog = testCatalog
             };
         }

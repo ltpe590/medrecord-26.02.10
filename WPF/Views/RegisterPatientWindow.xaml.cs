@@ -13,13 +13,15 @@ namespace WPF.Views
             Vm = viewModel;
             DataContext = Vm;
 
-            // Hook up the RequestClose event
             Vm.RequestClose += ok =>
             {
                 DialogResult = ok;
                 this.BeginAnimation(Window.LeftProperty, null);
                 Close();
             };
+
+            Vm.ValidationFailed += msg =>
+                System.Windows.MessageBox.Show(msg, "Validation", MessageBoxButton.OK, MessageBoxImage.Warning);
 
             this.Left = -400;
             SlideInFromLeft();
@@ -28,24 +30,38 @@ namespace WPF.Views
         public bool StartVisitImmediately => Vm.StartVisitImmediately;
         public RegisterPatientViewModel Vm { get; }
 
-        public List<string> BloodGroups { get; } = new()
+        // BloodGroups moved to RegisterPatientViewModel
+
+        // Guard: prevents double-submit if both buttons are clicked during the close animation
+        private bool _saving = false;
+
+        private void DisableSaveButtons()
         {
-            "A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"
-        };
+            // Disable all three action buttons immediately to prevent re-entry
+            foreach (var btn in new[] { SaveBtn, SaveAndStartBtn, CancelBtn })
+                if (btn != null) btn.IsEnabled = false;
+        }
 
         // Button event handlers
         private void SaveButton_Click(object sender, RoutedEventArgs e)
         {
+            if (_saving) return;
+            _saving = true;
+            DisableSaveButtons();
             Vm.SavePatient(false); // Save without starting visit
         }
 
         private void SaveAndStartVisitButton_Click(object sender, RoutedEventArgs e)
         {
+            if (_saving) return;
+            _saving = true;
+            DisableSaveButtons();
             Vm.SavePatient(true); // Save and start visit
         }
 
         private void CancelButton_Click(object sender, RoutedEventArgs e)
         {
+            if (_saving) return;
             Vm.Cancel(); // Cancel the operation
         }
 

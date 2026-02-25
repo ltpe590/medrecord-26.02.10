@@ -1,7 +1,19 @@
-﻿<Application x:Class="WPF.App"
+<Application x:Class="WPF.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
     <Application.Resources>
+        <!-- Default theme tokens — overwritten at runtime by ThemeService.Apply() -->
+        <SolidColorBrush x:Key="AppAccent"      Color="#2196F3"/>
+        <SolidColorBrush x:Key="AppAccentDark"  Color="#1565C0"/>
+        <SolidColorBrush x:Key="AppAccentLight" Color="#90CAF9"/>
+        <SolidColorBrush x:Key="AppBackground"  Color="#FAFAFA"/>
+        <SolidColorBrush x:Key="AppSurface"     Color="#FFFFFF"/>
+        <SolidColorBrush x:Key="AppSurface2"    Color="#F5F5F5"/>
+        <SolidColorBrush x:Key="AppForeground"  Color="#1A1A1A"/>
+        <SolidColorBrush x:Key="AppForeground2" Color="#666666"/>
+        <SolidColorBrush x:Key="AppBorder"      Color="#E0E0E0"/>
+        <system:String  x:Key="AppAccentHex"
+                        xmlns:system="clr-namespace:System;assembly=mscorlib">#2196F3</system:String>
     </Application.Resources>
 </Application>

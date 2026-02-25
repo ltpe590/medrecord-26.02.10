@@ -6,104 +6,731 @@
         xmlns:helpers="clr-namespace:WPF.Helpers"
         xmlns:converters="clr-namespace:WPF.Converters"
         mc:Ignorable="d"
-        Title="Application Settings"
-        Height="550"
-        Width="600"
+        Title="Settings"
+        Height="680" Width="820"
+        MinHeight="600" MinWidth="760"
         WindowStartupLocation="CenterScreen"
-        ResizeMode="NoResize">
+        Background="#F5F5F5">
 
     <Window.Resources>
-        <converters:StringToBrushConverter x:Key="StringToBrushConverter" />
-    </Window.Resources>
+        <converters:StringToBrushConverter x:Key="StringToBrushConverter"/>
+        <BooleanToVisibilityConverter      x:Key="BoolToVis"/>
 
-    <Grid Margin="20">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-            <RowDefinition Height="Auto" />
-        </Grid.RowDefinitions>
-
-        <!-- Header -->
-        <TextBlock Grid.Row="0" Text="Application Settings" FontSize="20" FontWeight="Bold" Margin="0,0,0,20" />
-
-        <!-- Settings Content -->
-        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-            <StackPanel>
-                <!-- API Configuration -->
-                <GroupBox Header="API Configuration" Margin="0,0,0,15">
-                    <StackPanel Margin="10">
-                        <Label Content="API Base URL:" Target="{Binding ElementName=TxtApiUrl}" />
-                        <TextBox x:Name="TxtApiUrl" Text="{Binding ApiBaseUrl, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,10" />
-
-                        <Label Content="HTTP Timeout (seconds):" Target="{Binding ElementName=TxtTimeout}" />
-                        <TextBox x:Name="TxtTimeout" Text="{Binding HttpTimeoutSeconds, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,0,10" />
-
-                        <CheckBox x:Name="ChkDetailedErrors" Content="Enable detailed error messages" IsChecked="{Binding EnableDetailedErrors}" Margin="0,0,0,10" />
-                        <CheckBox x:Name="ChkTestAfterSave" Content="Test connection after saving settings" IsChecked="{Binding TestConnectionAfterSave}" Margin="0,0,0,10" />
-                    </StackPanel>
-                </GroupBox>
-
-                <!-- Connection Test -->
-                <GroupBox Header="Connection Test" Margin="0,0,0,15">
-                    <StackPanel Margin="10">
-                        <TextBlock Text="Test the connection to the API server:"
-                                   Margin="0,0,0,10"
-                                   TextWrapping="Wrap" />
-
-                        <!-- Connection Status Display -->
-                        <Border Background="#F5F5F5"
-                                CornerRadius="5"
-                                Padding="10"
-                                Margin="0,0,0,10">
-                            <StackPanel Orientation="Horizontal">
-                                <Ellipse Width="12"
-                                         Height="12"
-                                         Fill="{Binding ConnectionStatusColor, Converter={StaticResource StringToBrushConverter}}"
-                                         Margin="0,0,10,0" />
-                                <TextBlock Text="{Binding ConnectionStatus}"
-                                           VerticalAlignment="Center" />
+        <!-- Tab button style -->
+        <Style x:Key="TabBtn" TargetType="RadioButton">
+            <Setter Property="Background"   Value="Transparent"/>
+            <Setter Property="Foreground"   Value="#555"/>
+            <Setter Property="FontSize"     Value="13"/>
+            <Setter Property="FontWeight"   Value="SemiBold"/>
+            <Setter Property="Cursor"       Value="Hand"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding"      Value="16,10"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="Bd"
+                                Background="{TemplateBinding Background}"
+                                BorderThickness="0,0,0,3"
+                                BorderBrush="Transparent"
+                                Padding="{TemplateBinding Padding}">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock Text="{TemplateBinding Tag}"    FontSize="16" Margin="0,0,6,0"/>
+                                <TextBlock Text="{TemplateBinding Content}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter Property="Background" Value="#EEEEEE"/>
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="#2196F3"/>
+                                <Setter Property="Foreground" Value="#2196F3"/>
+                                <Setter Property="Background" Value="White"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
 
-                        <!-- Test Button -->
-                        <Button Content="Test Connection"
-                                Click="TestConnectionButton_Click"
+        <!-- Field label -->
+        <Style x:Key="FieldLabel" TargetType="TextBlock">
+            <Setter Property="FontSize"   Value="12"/>
+            <Setter Property="Foreground" Value="#777"/>
+            <Setter Property="Margin"     Value="0,0,0,4"/>
+        </Style>
+
+        <!-- Standard TextBox -->
+        <Style x:Key="FieldBox" TargetType="TextBox">
+            <Setter Property="Padding"          Value="8,6"/>
+            <Setter Property="FontSize"         Value="13"/>
+            <Setter Property="BorderBrush"      Value="#CCCCCC"/>
+            <Setter Property="BorderThickness"  Value="1"/>
+            <Setter Property="Background"       Value="White"/>
+            <Setter Property="Margin"           Value="0,0,0,14"/>
+        </Style>
+
+        <!-- Standard ComboBox -->
+        <Style x:Key="FieldCombo" TargetType="ComboBox">
+            <Setter Property="Padding"         Value="8,6"/>
+            <Setter Property="FontSize"        Value="13"/>
+            <Setter Property="BorderBrush"     Value="#CCCCCC"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Background"      Value="White"/>
+            <Setter Property="Margin"          Value="0,0,0,14"/>
+        </Style>
+
+        <!-- Action button -->
+        <Style x:Key="ActionBtn" TargetType="Button">
+            <Setter Property="Height"           Value="34"/>
+            <Setter Property="Padding"          Value="14,0"/>
+            <Setter Property="FontSize"         Value="13"/>
+            <Setter Property="BorderThickness"  Value="0"/>
+            <Setter Property="Cursor"           Value="Hand"/>
+            <Setter Property="Foreground"       Value="White"/>
+        </Style>
+
+        <!-- Section card -->
+        <Style x:Key="Card" TargetType="Border">
+            <Setter Property="Background"       Value="White"/>
+            <Setter Property="BorderBrush"      Value="#E0E0E0"/>
+            <Setter Property="BorderThickness"  Value="1"/>
+            <Setter Property="CornerRadius"     Value="6"/>
+            <Setter Property="Padding"          Value="20,16"/>
+            <Setter Property="Margin"           Value="0,0,0,14"/>
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="50"/>   <!-- tab bar -->
+            <RowDefinition Height="*"/>    <!-- content -->
+            <RowDefinition Height="56"/>   <!-- footer buttons -->
+        </Grid.RowDefinitions>
+
+        <!-- ── TAB BAR ───────────────────────────────────────────────────── -->
+        <Border Grid.Row="0" Background="White" BorderBrush="#E0E0E0" BorderThickness="0,0,0,1">
+            <StackPanel Orientation="Horizontal">
+                <RadioButton x:Name="TabConn"     Content="Connection" Tag="🔌"
+                             Style="{StaticResource TabBtn}" GroupName="Tabs"
+                             IsChecked="True" Checked="Tab_Checked"/>
+                <RadioButton x:Name="TabLab"      Content="Lab"        Tag="🧪"
+                             Style="{StaticResource TabBtn}" GroupName="Tabs"
+                             Checked="Tab_Checked"/>
+                <RadioButton x:Name="TabPharmacy" Content="Pharmacy"   Tag="💊"
+                             Style="{StaticResource TabBtn}" GroupName="Tabs"
+                             Checked="Tab_Checked"/>
+                <RadioButton x:Name="TabDoctor"   Content="Doctor"     Tag="🩺"
+                             Style="{StaticResource TabBtn}" GroupName="Tabs"
+                             Checked="Tab_Checked"/>
+                <RadioButton x:Name="TabAppear"   Content="Appearance" Tag="🎨"
+                             Style="{StaticResource TabBtn}" GroupName="Tabs"
+                             Checked="Tab_Checked"/>
+                <RadioButton x:Name="TabAi"       Content="AI"         Tag="🤖"
+                             Style="{StaticResource TabBtn}" GroupName="Tabs"
+                             Checked="Tab_Checked"/>
+            </StackPanel>
+        </Border>
+
+        <!-- ── CONTENT AREA ──────────────────────────────────────────────── -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="20,16">
+          <Grid>
+
+            <!-- ═══ CONNECTION TAB ════════════════════════════════════════ -->
+            <StackPanel x:Name="PanelConn" Visibility="Visible">
+
+                <!-- API -->
+                <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Text="API Configuration" FontSize="15" FontWeight="Bold" Margin="0,0,0,14"/>
+                        <TextBlock Text="API Base URL" Style="{StaticResource FieldLabel}"/>
+                        <TextBox   Text="{Binding ApiBaseUrl, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource FieldBox}"/>
+                        <TextBlock Text="HTTP Timeout (seconds)" Style="{StaticResource FieldLabel}"/>
+                        <TextBox   Text="{Binding HttpTimeoutSeconds, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource FieldBox}"/>
+                        <CheckBox  Content="Enable detailed error messages" IsChecked="{Binding EnableDetailedErrors}" Margin="0,0,0,8"/>
+                        <CheckBox  Content="Test connection after saving" IsChecked="{Binding TestConnectionAfterSave}"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Connection test -->
+                <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Text="Connection Test" FontSize="15" FontWeight="Bold" Margin="0,0,0,14"/>
+                        <Border Background="#F8F8F8" CornerRadius="4" Padding="10,8" Margin="0,0,0,12">
+                            <StackPanel Orientation="Horizontal">
+                                <Ellipse Width="11" Height="11" Margin="0,0,8,0"
+                                         Fill="{Binding ConnectionStatusColor, Converter={StaticResource StringToBrushConverter}}"/>
+                                <TextBlock Text="{Binding ConnectionStatus}" VerticalAlignment="Center" FontSize="13"/>
+                            </StackPanel>
+                        </Border>
+                        <Button Content="Test Connection" Click="TestConnectionButton_Click"
                                 IsEnabled="{Binding CanTestConnection}"
-                                Width="120"
-                                Height="30"
-                                HorizontalAlignment="Left" />
+                                Style="{StaticResource ActionBtn}"
+                                Background="#2196F3" Width="140" HorizontalAlignment="Left"/>
                     </StackPanel>
-                </GroupBox>
+                </Border>
 
-                <!-- Default Credentials -->
-                <GroupBox Header="Default Login Credentials" Margin="0,0,0,15">
-                    <StackPanel Margin="10">
-                        <Label Content="Default Username:" Target="{Binding ElementName=TxtDefaultUser}" />
-                        <TextBox x:Name="TxtDefaultUser" Text="{Binding DefaultUser}" Margin="0,0,0,10" />
-
-                        <Label Content="Default Password:" />
-                        <PasswordBox x:Name="TxtDefaultPassword" helpers:PasswordBoxHelper.BoundPassword="{Binding DefaultPassword, Mode=TwoWay}" Margin="0,0,0,10" />
-
-                        <Label Content="Default Display Name:" Target="{Binding ElementName=TxtDefaultUserName}" />
-                        <TextBox x:Name="TxtDefaultUserName" Text="{Binding DefaultUserName}" Margin="0,0,0,10" />
+                <!-- Credentials -->
+                <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Text="Default Login Credentials" FontSize="15" FontWeight="Bold" Margin="0,0,0,14"/>
+                        <TextBlock Text="Username" Style="{StaticResource FieldLabel}"/>
+                        <TextBox   Text="{Binding DefaultUser}" Style="{StaticResource FieldBox}"/>
+                        <TextBlock Text="Password" Style="{StaticResource FieldLabel}"/>
+                        <PasswordBox x:Name="PwdBox"
+                                     helpers:PasswordBoxHelper.BoundPassword="{Binding DefaultPassword, Mode=TwoWay}"
+                                     Padding="8,6" FontSize="13" BorderBrush="#CCC" Margin="0,0,0,14"/>
+                        <TextBlock Text="Display Name" Style="{StaticResource FieldLabel}"/>
+                        <TextBox   Text="{Binding DefaultUserName}" Style="{StaticResource FieldBox}"/>
                     </StackPanel>
-                </GroupBox>
+                </Border>
+            </StackPanel>
 
-                <!-- Appearance -->
-                <GroupBox Header="Appearance" Margin="0,0,0,15">
-                    <StackPanel Margin="10">
-                        <TextBlock Text="Application theme and visual settings:" Margin="0,0,0,10" TextWrapping="Wrap" />
-                        <CheckBox Content="Use dark theme (restart required)" IsEnabled="False" Margin="0,0,0,10" />
-                        <CheckBox Content="Show tooltips" IsChecked="True" IsEnabled="False" Margin="0,0,0,10" />
+            <!-- ═══ LAB TAB ═══════════════════════════════════════════════ -->
+            <Grid x:Name="PanelLab" Visibility="Collapsed">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- Add new test form -->
+                <Border Style="{StaticResource Card}" Grid.Row="0">
+                    <StackPanel>
+                        <TextBlock Text="Add New Lab Test" FontSize="15" FontWeight="Bold" Margin="0,0,0,14"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="16"/>
+                                <ColumnDefinition Width="140"/>
+                                <ColumnDefinition Width="16"/>
+                                <ColumnDefinition Width="180"/>
+                                <ColumnDefinition Width="16"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="Test Name *" Style="{StaticResource FieldLabel}"/>
+                                <TextBox   Text="{Binding NewTestName, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource FieldBox}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="Unit" Style="{StaticResource FieldLabel}"/>
+                                <TextBox   Text="{Binding NewTestUnit, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource FieldBox}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="4">
+                                <TextBlock Text="Normal Range" Style="{StaticResource FieldLabel}"/>
+                                <TextBox   Text="{Binding NewTestRange, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource FieldBox}"/>
+                            </StackPanel>
+                            <Button Grid.Column="6" Content="+ Add" Click="AddTestButton_Click"
+                                    IsEnabled="{Binding CanAddTest}"
+                                    Style="{StaticResource ActionBtn}"
+                                    Background="#4CAF50" VerticalAlignment="Bottom" Margin="0,0,0,14"/>
+                        </Grid>
                     </StackPanel>
-                </GroupBox>
+                </Border>
+
+                <!-- Test catalog grid -->
+                <Border Style="{StaticResource Card}" Grid.Row="1">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <DockPanel Grid.Row="0" Margin="0,0,0,10">
+                            <TextBlock Text="Lab Test Catalog" FontSize="15" FontWeight="Bold" DockPanel.Dock="Left" VerticalAlignment="Center"/>
+                            <Button Content="↻ Refresh" Click="RefreshTestsButton_Click"
+                                    Style="{StaticResource ActionBtn}"
+                                    Background="#607D8B" DockPanel.Dock="Right" Margin="0,0,0,0"/>
+                        </DockPanel>
+                        <DataGrid Grid.Row="1"
+                                  ItemsSource="{Binding Tests}"
+                                  SelectedItem="{Binding SelectedLabTest}"
+                                  AutoGenerateColumns="False"
+                                  CanUserAddRows="False"
+                                  CanUserDeleteRows="False"
+                                  IsReadOnly="True"
+                                  MinHeight="200"
+                                  GridLinesVisibility="Horizontal"
+                                  BorderThickness="1" BorderBrush="#E0E0E0"
+                                  HeadersVisibility="Column"
+                                  SelectionMode="Single">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="ID"           Binding="{Binding TestId}"     Width="50"/>
+                                <DataGridTextColumn Header="Test Name"    Binding="{Binding TestName}"   Width="*"/>
+                                <DataGridTextColumn Header="Unit"         Binding="{Binding TestUnit}"   Width="90"/>
+                                <DataGridTextColumn Header="Normal Range" Binding="{Binding NormalRange}" Width="130"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                        <Button Grid.Row="2" Content="🗑 Delete Selected" Click="DeleteTestButton_Click"
+                                Style="{StaticResource ActionBtn}"
+                                Background="#F44336" HorizontalAlignment="Right" Margin="0,10,0,0"/>
+                    </Grid>
+                </Border>
+            </Grid>
+
+            <!-- ═══ PHARMACY TAB ══════════════════════════════════════════ -->
+            <Grid x:Name="PanelPharmacy" Visibility="Collapsed">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- Add new drug form -->
+                <Border Style="{StaticResource Card}" Grid.Row="0">
+                    <StackPanel>
+                        <TextBlock Text="Add New Drug" FontSize="15" FontWeight="Bold" Margin="0,0,0,14"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="12"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="12"/>
+                                <ColumnDefinition Width="140"/>
+                                <ColumnDefinition Width="12"/>
+                                <ColumnDefinition Width="140"/>
+                                <ColumnDefinition Width="12"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="Brand Name *" Style="{StaticResource FieldLabel}"/>
+                                <TextBox   Text="{Binding NewDrugName, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource FieldBox}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="Composition / Generic" Style="{StaticResource FieldLabel}"/>
+                                <TextBox   Text="{Binding NewDrugComposition, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource FieldBox}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="4">
+                                <TextBlock Text="Form" Style="{StaticResource FieldLabel}"/>
+                                <ComboBox  ItemsSource="{x:Static vm:SettingsViewModel.DrugForms}"
+                                           Text="{Binding NewDrugForm, UpdateSourceTrigger=PropertyChanged}"
+                                           IsEditable="True"
+                                           Style="{StaticResource FieldCombo}"
+                                           xmlns:vm="clr-namespace:WPF.ViewModels"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="6">
+                                <TextBlock Text="Dosage Strength" Style="{StaticResource FieldLabel}"/>
+                                <TextBox   Text="{Binding NewDrugStrength, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource FieldBox}"/>
+                            </StackPanel>
+                            <Button Grid.Column="8" Content="+ Add" Click="AddDrugButton_Click"
+                                    IsEnabled="{Binding CanAddDrug}"
+                                    Style="{StaticResource ActionBtn}"
+                                    Background="#4CAF50" VerticalAlignment="Bottom" Margin="0,0,0,14"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- Drug catalog grid -->
+                <Border Style="{StaticResource Card}" Grid.Row="1">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <DockPanel Grid.Row="0" Margin="0,0,0,10">
+                            <TextBlock Text="Drug Catalog" FontSize="15" FontWeight="Bold" DockPanel.Dock="Left" VerticalAlignment="Center"/>
+                            <Button Content="↻ Refresh" Click="RefreshDrugsButton_Click"
+                                    Style="{StaticResource ActionBtn}"
+                                    Background="#607D8B" DockPanel.Dock="Right"/>
+                        </DockPanel>
+                        <!-- Search filter -->
+                        <TextBox Grid.Row="1"
+                                 Text="{Binding DrugFormFilter, UpdateSourceTrigger=PropertyChanged}"
+                                 Padding="8,6" FontSize="13" BorderBrush="#CCC"
+                                 Margin="0,0,0,10"
+                                 Tag="🔍 Filter by name, form or composition...">
+                            <TextBox.Style>
+                                <Style TargetType="TextBox">
+                                    <Style.Triggers>
+                                        <Trigger Property="Text" Value="">
+                                            <Setter Property="Background">
+                                                <Setter.Value>
+                                                    <VisualBrush Stretch="None" AlignmentX="Left">
+                                                        <VisualBrush.Visual>
+                                                            <TextBlock Text="🔍 Filter by name, form or composition..."
+                                                                       Foreground="#AAAAAA" Margin="10,0,0,0"/>
+                                                        </VisualBrush.Visual>
+                                                    </VisualBrush>
+                                                </Setter.Value>
+                                            </Setter>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBox.Style>
+                        </TextBox>
+                        <DataGrid Grid.Row="2"
+                                  ItemsSource="{Binding FilteredDrugs}"
+                                  SelectedItem="{Binding SelectedDrug}"
+                                  AutoGenerateColumns="False"
+                                  CanUserAddRows="False"
+                                  IsReadOnly="True"
+                                  MinHeight="200"
+                                  GridLinesVisibility="Horizontal"
+                                  BorderThickness="1" BorderBrush="#E0E0E0"
+                                  SelectionMode="Single">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="ID"          Binding="{Binding DrugId}"         Width="50"/>
+                                <DataGridTextColumn Header="Brand Name"  Binding="{Binding BrandName}"      Width="*"/>
+                                <DataGridTextColumn Header="Composition" Binding="{Binding Composition}"    Width="*"/>
+                                <DataGridTextColumn Header="Form"        Binding="{Binding Form}"           Width="100"/>
+                                <DataGridTextColumn Header="Strength"    Binding="{Binding DosageStrength}" Width="100"/>
+                            </DataGrid.Columns>
+                        </DataGrid>
+                        <Button Grid.Row="3" Content="🗑 Delete Selected" Click="DeleteDrugButton_Click"
+                                Style="{StaticResource ActionBtn}"
+                                Background="#F44336" HorizontalAlignment="Right" Margin="0,10,0,0"/>
+                    </Grid>
+                </Border>
+            </Grid>
+
+            <!-- ═══ DOCTOR TAB ═════════════════════════════════════════════ -->
+            <StackPanel x:Name="PanelDoctor" Visibility="Collapsed">
+                <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Text="Doctor Details" FontSize="15" FontWeight="Bold" Margin="0,0,0,14"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="120"/>
+                                <ColumnDefinition Width="12"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="Title" Style="{StaticResource FieldLabel}"/>
+                                <ComboBox  ItemsSource="{x:Static vm:SettingsViewModel.DoctorTitles}"
+                                           SelectedItem="{Binding DoctorTitle}"
+                                           Style="{StaticResource FieldCombo}"
+                                           xmlns:vm="clr-namespace:WPF.ViewModels"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="Full Name" Style="{StaticResource FieldLabel}"/>
+                                <TextBox   Text="{Binding DoctorName, UpdateSourceTrigger=PropertyChanged}"
+                                           Style="{StaticResource FieldBox}"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <TextBlock Text="Specialty" Style="{StaticResource FieldLabel}"/>
+                        <ComboBox  ItemsSource="{x:Static vm:SettingsViewModel.Specialties}"
+                                   SelectedItem="{Binding DoctorSpecialty}"
+                                   Style="{StaticResource FieldCombo}"
+                                   xmlns:vm="clr-namespace:WPF.ViewModels"/>
+
+                        <TextBlock Text="License / Registration Number" Style="{StaticResource FieldLabel}"/>
+                        <TextBox   Text="{Binding DoctorLicense, UpdateSourceTrigger=PropertyChanged}"
+                                   Style="{StaticResource FieldBox}"/>
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Text="Clinic / Practice" FontSize="15" FontWeight="Bold" Margin="0,0,0,14"/>
+                        <TextBlock Text="Clinic / Hospital Name" Style="{StaticResource FieldLabel}"/>
+                        <TextBox   Text="{Binding ClinicName, UpdateSourceTrigger=PropertyChanged}"
+                                   Style="{StaticResource FieldBox}"/>
+                        <TextBlock Text="Contact Phone" Style="{StaticResource FieldLabel}"/>
+                        <TextBox   Text="{Binding ClinicPhone, UpdateSourceTrigger=PropertyChanged}"
+                                   Style="{StaticResource FieldBox}"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Specialty → color hint -->
+                <Border Background="#E3F2FD" BorderBrush="#90CAF9" BorderThickness="1"
+                        CornerRadius="6" Padding="14,10">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="ℹ️" FontSize="18" Margin="0,0,10,0" VerticalAlignment="Center"/>
+                        <TextBlock TextWrapping="Wrap" VerticalAlignment="Center" Foreground="#1565C0" FontSize="12">
+                            <Run Text="Your specialty is linked to the default accent color. "/>
+                            <Run Text="Switch the color scheme in the Appearance tab if you prefer a different color."/>
+                        </TextBlock>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+
+            <!-- ═══ APPEARANCE TAB ════════════════════════════════════════ -->
+            <StackPanel x:Name="PanelAppear" Visibility="Collapsed">
+
+                <!-- Color scheme -->
+                <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Text="Color Scheme" FontSize="15" FontWeight="Bold" Margin="0,0,0,14"/>
+                        <TextBlock Text="Choose a color scheme for the application accent color." Foreground="#777" FontSize="12" Margin="0,0,0,12"/>
+                        <TextBlock Text="Color Scheme" Style="{StaticResource FieldLabel}"/>
+                        <ComboBox  ItemsSource="{x:Static vm:SettingsViewModel.ColorSchemeNames}"
+                                   SelectedItem="{Binding ColorScheme}"
+                                   Style="{StaticResource FieldCombo}"
+                                   xmlns:vm="clr-namespace:WPF.ViewModels"/>
+
+                        <!-- Live preview swatch — painted by code-behind on PropertyChanged -->
+                        <TextBlock Text="Preview" Style="{StaticResource FieldLabel}"/>
+                        <Border x:Name="AccentPreviewBorder" Height="44" CornerRadius="6" Margin="0,0,0,12"
+                                Background="#2196F3">
+                            <TextBlock x:Name="AccentPreviewText" Text="#2196F3" Foreground="White" FontSize="13"
+                                       FontWeight="SemiBold" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                        </Border>
+
+                        <Button Content="Preview Now" Click="PreviewThemeButton_Click"
+                                Style="{StaticResource ActionBtn}"
+                                Background="#607D8B" Width="120" HorizontalAlignment="Left"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Dark mode -->
+                <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Text="Display Mode" FontSize="15" FontWeight="Bold" Margin="0,0,0,14"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="Dark Mode" FontSize="14" FontWeight="SemiBold"/>
+                                <TextBlock Text="Switch the application to a dark background theme."
+                                           Foreground="#888" FontSize="12" Margin="0,4,0,0"/>
+                            </StackPanel>
+                            <!-- Toggle switch (styled CheckBox) -->
+                            <CheckBox Grid.Column="1" IsChecked="{Binding IsDarkMode}"
+                                      VerticalAlignment="Center" Margin="20,0,0,0"
+                                      Content="Dark" FontSize="13"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- Specialty color map reference -->
+                <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Text="Specialty Color Reference" FontSize="15" FontWeight="Bold" Margin="0,0,0,14"/>
+                        <TextBlock Text="When 'SpecialtyLinked' is selected, the accent color is set automatically based on your specialty."
+                                   Foreground="#777" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,12"/>
+                        <ItemsControl>
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.Items>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,16,8">
+                                    <Border Width="16" Height="16" CornerRadius="3" Background="#2196F3" Margin="0,0,6,0"/>
+                                    <TextBlock Text="General" FontSize="12" VerticalAlignment="Center"/>
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,16,8">
+                                    <Border Width="16" Height="16" CornerRadius="3" Background="#E91E8C" Margin="0,0,6,0"/>
+                                    <TextBlock Text="Gyne/OB" FontSize="12" VerticalAlignment="Center"/>
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,16,8">
+                                    <Border Width="16" Height="16" CornerRadius="3" Background="#F44336" Margin="0,0,6,0"/>
+                                    <TextBlock Text="Cardiovascular" FontSize="12" VerticalAlignment="Center"/>
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,16,8">
+                                    <Border Width="16" Height="16" CornerRadius="3" Background="#9C27B0" Margin="0,0,6,0"/>
+                                    <TextBlock Text="Neurological" FontSize="12" VerticalAlignment="Center"/>
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,16,8">
+                                    <Border Width="16" Height="16" CornerRadius="3" Background="#00BCD4" Margin="0,0,6,0"/>
+                                    <TextBlock Text="Respiratory" FontSize="12" VerticalAlignment="Center"/>
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,16,8">
+                                    <Border Width="16" Height="16" CornerRadius="3" Background="#FF9800" Margin="0,0,6,0"/>
+                                    <TextBlock Text="Gastrointestinal" FontSize="12" VerticalAlignment="Center"/>
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,16,8">
+                                    <Border Width="16" Height="16" CornerRadius="3" Background="#4CAF50" Margin="0,0,6,0"/>
+                                    <TextBlock Text="Endocrine" FontSize="12" VerticalAlignment="Center"/>
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,16,8">
+                                    <Border Width="16" Height="16" CornerRadius="3" Background="#607D8B" Margin="0,0,6,0"/>
+                                    <TextBlock Text="Psychiatric" FontSize="12" VerticalAlignment="Center"/>
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,16,8">
+                                    <Border Width="16" Height="16" CornerRadius="3" Background="#03A9F4" Margin="0,0,6,0"/>
+                                    <TextBlock Text="Ophthalmology" FontSize="12" VerticalAlignment="Center"/>
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,16,8">
+                                    <Border Width="16" Height="16" CornerRadius="3" Background="#795548" Margin="0,0,6,0"/>
+                                    <TextBlock Text="Musculoskeletal" FontSize="12" VerticalAlignment="Center"/>
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,16,8">
+                                    <Border Width="16" Height="16" CornerRadius="3" Background="#FF5722" Margin="0,0,6,0"/>
+                                    <TextBlock Text="Dermatology" FontSize="12" VerticalAlignment="Center"/>
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,16,8">
+                                    <Border Width="16" Height="16" CornerRadius="3" Background="#B71C1C" Margin="0,0,6,0"/>
+                                    <TextBlock Text="Hematology" FontSize="12" VerticalAlignment="Center"/>
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,0,16,8">
+                                    <Border Width="16" Height="16" CornerRadius="3" Background="#1565C0" Margin="0,0,6,0"/>
+                                    <TextBlock Text="Renal" FontSize="12" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </ItemsControl.Items>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+
+          </Grid>
+        </ScrollViewer>
+
+        <!-- ════════════════════════════════════════════════════════════════════
+             🤖 AI TAB PANEL — separate ScrollViewer
+             ════════════════════════════════════════════════════════════════════ -->
+        <ScrollViewer x:Name="PanelAi" Grid.Row="1"
+                      Visibility="Collapsed"
+                      VerticalScrollBarVisibility="Auto" Padding="20,16">
+            <StackPanel>
+
+                <!-- Provider selector -->
+                <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Text="AI Provider" FontSize="15" FontWeight="Bold" Margin="0,0,0,14"/>
+                        <TextBlock Text="Active provider" Style="{StaticResource FieldLabel}"/>
+                        <ComboBox  ItemsSource="{x:Static vm:SettingsViewModel.AiProviders}"
+                                   SelectedItem="{Binding AiProvider}"
+                                   Style="{StaticResource FieldCombo}"
+                                   xmlns:vm="clr-namespace:WPF.ViewModels"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                            <Border Background="#F8F8F8" CornerRadius="4" Padding="10,6"
+                                    Margin="0,0,10,0" MinWidth="300">
+                                <StackPanel Orientation="Horizontal">
+                                    <Ellipse Width="10" Height="10" Margin="0,0,8,0"
+                                             Fill="{Binding AiStatusColor}"/>
+                                    <TextBox Text="{Binding AiStatus, Mode=OneWay}"
+                                             VerticalAlignment="Center" FontSize="12"
+                                             IsReadOnly="True"
+                                             BorderThickness="0"
+                                             Background="Transparent"
+                                             IsTabStop="False"
+                                             TextWrapping="Wrap"
+                                             ToolTip="Click to select, then Ctrl+C to copy"/>
+                                </StackPanel>
+                            </Border>
+                            <Button Content="Test Connection"
+                                    Click="TestAiButton_Click"
+                                    IsEnabled="{Binding CanTestAi}"
+                                    Style="{StaticResource ActionBtn}"
+                                    Background="#2196F3" Width="130"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- Claude -->
+                <Border Style="{StaticResource Card}"
+                        Visibility="{Binding ShowClaudeFields, Converter={StaticResource BoolToVis}}">
+                    <StackPanel>
+                        <TextBlock Text="Claude (Anthropic)" FontSize="15" FontWeight="Bold" Margin="0,0,0,14"/>
+                        <TextBlock Text="API Key" Style="{StaticResource FieldLabel}"/>
+                        <PasswordBox x:Name="PwdClaude"
+                                     Padding="8,6" FontSize="13" BorderBrush="#CCC" Margin="0,0,0,14"
+                                     helpers:PasswordBoxHelper.BoundPassword="{Binding ClaudeApiKey, Mode=TwoWay}"/>
+                        <TextBlock Text="Model" Style="{StaticResource FieldLabel}"/>
+                        <ComboBox  ItemsSource="{x:Static vm:SettingsViewModel.ClaudeModels}"
+                                   SelectedItem="{Binding ClaudeModel}"
+                                   IsEditable="True"
+                                   Style="{StaticResource FieldCombo}"
+                                   xmlns:vm="clr-namespace:WPF.ViewModels"/>
+                        <TextBlock FontSize="11" Foreground="#888">
+                            <Run Text="Get your key at console.anthropic.com"/>
+                        </TextBlock>
+                    </StackPanel>
+                </Border>
+
+                <!-- ChatGPT -->
+                <Border Style="{StaticResource Card}"
+                        Visibility="{Binding ShowOpenAiFields, Converter={StaticResource BoolToVis}}">
+                    <StackPanel>
+                        <TextBlock Text="ChatGPT (OpenAI)" FontSize="15" FontWeight="Bold" Margin="0,0,0,14"/>
+                        <TextBlock Text="API Key" Style="{StaticResource FieldLabel}"/>
+                        <PasswordBox x:Name="PwdOpenAi"
+                                     Padding="8,6" FontSize="13" BorderBrush="#CCC" Margin="0,0,0,14"
+                                     helpers:PasswordBoxHelper.BoundPassword="{Binding OpenAiApiKey, Mode=TwoWay}"/>
+                        <TextBlock Text="Model" Style="{StaticResource FieldLabel}"/>
+                        <ComboBox  ItemsSource="{x:Static vm:SettingsViewModel.OpenAiModels}"
+                                   SelectedItem="{Binding OpenAiModel}"
+                                   IsEditable="True"
+                                   Style="{StaticResource FieldCombo}"
+                                   xmlns:vm="clr-namespace:WPF.ViewModels"/>
+                        <TextBlock FontSize="11" Foreground="#888">
+                            <Run Text="Get your key at platform.openai.com"/>
+                        </TextBlock>
+                    </StackPanel>
+                </Border>
+
+                <!-- Ollama -->
+                <Border Style="{StaticResource Card}"
+                        Visibility="{Binding ShowOllamaFields, Converter={StaticResource BoolToVis}}">
+                    <StackPanel>
+                        <TextBlock Text="Ollama (local)" FontSize="15" FontWeight="Bold" Margin="0,0,0,14"/>
+                        <TextBlock Text="Ollama base URL" Style="{StaticResource FieldLabel}"/>
+                        <TextBox   Text="{Binding OllamaBaseUrl, UpdateSourceTrigger=PropertyChanged}"
+                                   Style="{StaticResource FieldBox}"/>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
+                            <Border Background="#F8F8F8" CornerRadius="4" Padding="10,6"
+                                    Margin="0,0,10,0" MinWidth="300">
+                                <StackPanel Orientation="Horizontal">
+                                    <Ellipse Width="10" Height="10" Margin="0,0,8,0"
+                                             Fill="{Binding OllamaStatusColor, Converter={StaticResource StringToBrushConverter}}"/>
+                                    <TextBlock Text="{Binding OllamaDetectStatus}"
+                                               VerticalAlignment="Center" FontSize="12"/>
+                                </StackPanel>
+                            </Border>
+                            <Button Content="↺ Detect" Click="DetectOllamaButton_Click"
+                                    Style="{StaticResource ActionBtn}"
+                                    Background="#607D8B" Width="90"/>
+                        </StackPanel>
+                        <TextBlock Text="Model" Style="{StaticResource FieldLabel}"/>
+                        <ComboBox  ItemsSource="{Binding OllamaModels}"
+                                   SelectedItem="{Binding OllamaModel}"
+                                   IsEditable="True"
+                                   Style="{StaticResource FieldCombo}"/>
+                        <TextBlock FontSize="11" Foreground="#888" TextWrapping="Wrap">
+                            <Run Text="Run "/>
+                            <Run Text="ollama serve" FontFamily="Consolas" Foreground="#333"/>
+                            <Run Text=" then click Detect. Pull models with "/>
+                            <Run Text="ollama pull llama3" FontFamily="Consolas" Foreground="#333"/>
+                        </TextBlock>
+                    </StackPanel>
+                </Border>
+
+                <!-- Generation settings -->
+                <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Text="Generation Settings" FontSize="15" FontWeight="Bold" Margin="0,0,0,10"/>
+                        <TextBlock FontSize="11" Foreground="#888" Margin="0,0,0,10" TextWrapping="Wrap"
+                                   Text="Lower temperature (0.1–0.3) gives more focused outputs — recommended for clinical use."/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="16"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="Temperature (0.0 – 1.0)" Style="{StaticResource FieldLabel}"/>
+                                <TextBox   Text="{Binding AiTemperature, UpdateSourceTrigger=PropertyChanged}"
+                                           Style="{StaticResource FieldBox}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2">
+                                <TextBlock Text="Max tokens" Style="{StaticResource FieldLabel}"/>
+                                <TextBox   Text="{Binding AiMaxTokens, UpdateSourceTrigger=PropertyChanged}"
+                                           Style="{StaticResource FieldBox}"/>
+                            </StackPanel>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
             </StackPanel>
         </ScrollViewer>
 
-        <!-- Buttons -->
-        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
-            <Button Content="Save" Click="SaveButton_Click" Width="80" Height="30" Margin="0,0,10,0" Background="#0078D4" Foreground="White" />
-            <Button Content="Cancel" Click="CancelButton_Click" Width="80" Height="30" Background="#6c757d" Foreground="White" />
-        </StackPanel>
+        <!-- ── FOOTER BUTTONS ─────────────────────────────────────────────── -->
+        <Border Grid.Row="2" Background="White" BorderBrush="#E0E0E0" BorderThickness="0,1,0,0">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="20,0">
+                <Button Content="Cancel" Click="CancelButton_Click"
+                        Width="90" Height="36" Margin="0,0,10,0"
+                        Background="#9E9E9E" Foreground="White"
+                        BorderThickness="0" Cursor="Hand" FontSize="13"/>
+                <Button Content="Save" Click="SaveButton_Click"
+                        Width="90" Height="36"
+                        Background="#2196F3" Foreground="White"
+                        BorderThickness="0" Cursor="Hand" FontSize="13" FontWeight="SemiBold"/>
+            </StackPanel>
+        </Border>
     </Grid>
 </Window>
+

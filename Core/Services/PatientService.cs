@@ -98,24 +98,11 @@ namespace Core.Services
             {
                 _logger.LogInformation("Creating new patient: {PatientName}", dto.Name);
 
-                // Call API to create patient
+                // API creates the patient in the database
                 var createdPatient = await _patientHttpClient.CreatePatientAsync(dto);
 
-                if (createdPatient != null)
-                {
-                    // Cache in local repository
-                    try
-                    {
-                        var patientEntity = MapDtoToEntity(createdPatient);
-                        await _patientRepository.AddAsync(patientEntity);
-                        _logger.LogDebug("Patient cached locally: {PatientId}", createdPatient.PatientId);
-                    }
-                    catch (Exception cacheEx)
-                    {
-                        _logger.LogWarning(cacheEx, "Failed to cache patient {PatientId} locally", createdPatient.PatientId);
-                        // Don't fail the operation if caching fails
-                    }
-                }
+                // Do NOT also write via _patientRepository — both target the same DB,
+                // which would insert a duplicate record.
 
                 return createdPatient;
             }

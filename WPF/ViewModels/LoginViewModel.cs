@@ -1,14 +1,12 @@
 using Core.Interfaces.Services;
 using Microsoft.Extensions.Logging;
 using System;
-using System.ComponentModel;
-using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 using WPF.Services;
 
 namespace WPF.ViewModels
 {
-    public class LoginViewModel : INotifyPropertyChanged
+    public class LoginViewModel : BaseViewModel
     {
         private readonly IUserService _userService;
         private readonly IBiometricService _biometricService;
@@ -19,10 +17,7 @@ namespace WPF.ViewModels
         private string _password = string.Empty;
         private string _statusMessage = "Please login";
         private bool _isLoggingIn = false;
-        private bool _biometricAvailable = false;
-
-        public event PropertyChangedEventHandler? PropertyChanged;
-        public event Action<string>? LoginSuccessful; // Passes auth token
+        private bool _biometricAvailable = false;        public event Action<string>? LoginSuccessful; // Passes auth token
         public event Action<string, string>? ShowError;
 
         public LoginViewModel(
@@ -220,12 +215,19 @@ namespace WPF.ViewModels
                 if (success)
                 {
                     _logger.LogInformation("✅ Biometric authentication SUCCESSFUL");
-                    _logger.LogInformation("⏳ Now logging in with stored credentials...");
                     
-                    // TODO: Retrieve stored password for this user
-                    // For now, we'll require password to be entered
-                    // In production, you'd store encrypted credentials after first login
-                    
+                    // Use stored default credentials from AppSettings (set after first successful login)
+                    var storedUser = _settings.DefaultUser;
+                    var storedPass = _settings.DefaultPassword;
+
+                    if (!string.IsNullOrWhiteSpace(storedUser) && !string.IsNullOrWhiteSpace(storedPass))
+                    {
+                        _logger.LogInformation("Using stored credentials for biometric login");
+                        Username = storedUser;
+                        Password = storedPass;
+                        return await LoginWithPasswordAsync();
+                    }
+
                     if (string.IsNullOrWhiteSpace(Password))
                     {
                         _logger.LogWarning("⚠️ Password required for first-time biometric login");
@@ -258,10 +260,7 @@ namespace WPF.ViewModels
                 IsLoggingIn = false;
             }
         }
+}
 
-        protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
-    }
+
 }

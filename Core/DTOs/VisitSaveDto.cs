@@ -27,6 +27,12 @@
         public int? VisitId { get; set; }
 
         public string? PausedVisitFileName { get; set; }
+
+        /// <summary>Lab results to save with this visit. Replaces any existing results for the visit.</summary>
+        public List<LabResultCreateDto> LabResults { get; set; } = new();
+
+        /// <summary>Prescriptions to save with this visit. Replaces any existing prescriptions for the visit.</summary>
+        public List<PrescriptionCreateDto> Prescriptions { get; set; } = new();
     }
 
     public class VisitSaveResult

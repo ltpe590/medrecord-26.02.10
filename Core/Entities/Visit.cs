@@ -36,12 +36,11 @@ namespace Core.Entities
         public void UpdatePresentingSymptom(string symptom, string duration, string shortNote)
         {
             StringValidator.ValidateNotEmpty(symptom, nameof(symptom));
-            StringValidator.ValidateNotEmpty(duration, nameof(duration));
-            StringValidator.ValidateNotEmpty(shortNote, nameof(shortNote));
+            // duration and shortNote are optional when starting a visit from the WPF client
 
             PresentingSymptomText = symptom.Trim();
-            PresentingSymptomDurationText = duration.Trim();
-            ShortNote = shortNote.Trim();
+            PresentingSymptomDurationText = string.IsNullOrWhiteSpace(duration) ? "N/A" : duration.Trim();
+            ShortNote = string.IsNullOrWhiteSpace(shortNote) ? string.Empty : shortNote.Trim();
         }
 
         // Upsert section text (save only filled ones)

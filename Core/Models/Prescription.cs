@@ -7,10 +7,12 @@ namespace Core.Models
     {
         public int PrescriptionId { get; set; }
         public int DrugId { get; set; }
-        public string? Dosage { get; set; } // e.g., "1 tablet twice daily"
+        public string? Dosage { get; set; }
         public string? DurationDays { get; set; }
+        public string? Route { get; set; }
+        public string? Frequency { get; set; }
+        public string? Instructions { get; set; }
 
-        // Navigation properties
         public int VisitId { get; set; }
 
         public required Visit Visit { get; set; }

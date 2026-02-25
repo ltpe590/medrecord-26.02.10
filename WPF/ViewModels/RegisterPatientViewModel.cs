@@ -1,4 +1,4 @@
-﻿using Core.DTOs;
+using Core.DTOs;
 using Core.Entities;
 using Microsoft.Extensions.Logging;
 using System.ComponentModel;
@@ -6,7 +6,7 @@ using System.Runtime.CompilerServices;
 
 namespace WPF.ViewModels
 {
-    public sealed class RegisterPatientViewModel : INotifyPropertyChanged, IDataErrorInfo
+    public sealed class RegisterPatientViewModel : BaseViewModel, IDataErrorInfo
     {
         #region Fields
 
@@ -130,6 +130,13 @@ namespace WPF.ViewModels
 
         public PatientCreateDto? CreatedPatient { get; private set; }
 
+        public List<string> BloodGroups { get; } = new()
+        {
+            "A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"
+        };
+
+        public List<string> GenderOptions { get; } = new() { "Male", "Female" };
+
         #endregion Properties
 
         #region Constructor
@@ -151,6 +158,10 @@ namespace WPF.ViewModels
                 if (string.IsNullOrWhiteSpace(Name) || DateOfBirth is null)
                 {
                     _logger.LogWarning("SavePatient called with invalid data");
+                    var msg = string.IsNullOrWhiteSpace(Name)
+                        ? "Patient name is required."
+                        : "Date of birth is required.";
+                    ValidationFailed?.Invoke(msg);
                     return;
                 }
 
@@ -200,11 +211,9 @@ namespace WPF.ViewModels
         #region Events
 
         public event Action<bool>? RequestClose;
+        public event Action<string>? ValidationFailed;
 
-        public event PropertyChangedEventHandler? PropertyChanged;
 
-        private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-            => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 
         #endregion Events
 

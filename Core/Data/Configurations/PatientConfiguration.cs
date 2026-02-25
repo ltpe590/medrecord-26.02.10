@@ -23,6 +23,12 @@ namespace Core.Data.Configurations
                        d => d.ToDateTime(TimeOnly.MinValue),  // Convert to DateTime for DB
                        d => DateOnly.FromDateTime(d))         // Convert back to DateOnly
                    .IsRequired();
+
+            // Unique constraint: prevent duplicate patients with same name + date of birth.
+            // IsDeleted is included so soft-deleted patients don't block re-registration.
+            builder.HasIndex(p => new { p.Name, p.DateOfBirth, p.IsDeleted })
+                   .HasDatabaseName("IX_Patients_Name_DateOfBirth_IsDeleted")
+                   .IsUnique();
         }
     }
 }

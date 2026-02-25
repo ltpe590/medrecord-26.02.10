@@ -22,6 +22,8 @@ namespace Core.Data.Context
 
         public DbSet<DrugCatalog> DrugCatalogs { get; set; }
 
+        public DbSet<LabResults> LabResults { get; set; }
+
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
             if (!optionsBuilder.IsConfigured)
@@ -44,6 +46,7 @@ namespace Core.Data.Context
             modelBuilder.ApplyConfiguration(new TestsCatalogConfiguration());
             modelBuilder.ApplyConfiguration(new UserConfiguration());
             modelBuilder.ApplyConfiguration(new DrugCatalogConfiguration());
+            modelBuilder.ApplyConfiguration(new LabResultsConfiguration());
 
             TestCatalogSeeder.SeedTestCatalogs(modelBuilder);
         }

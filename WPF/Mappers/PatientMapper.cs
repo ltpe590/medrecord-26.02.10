@@ -15,7 +15,9 @@ namespace WPF.Mappers
                 Sex = dto.Sex,
                 DateOfBirth = dto.DateOfBirth,
                 PhoneNumber = dto.PhoneNumber,
-                Address = dto.Address
+                Address = dto.Address,
+                BloodGroup = dto.BloodGroup,
+                Allergies = dto.Allergies
             };
         }
 

@@ -134,6 +134,7 @@ namespace Core.Services
                     return VisitSaveResult.CreateFailure("Patient ID is required.");
 
                 var patientExists = await _db.Patients
+                    .AsNoTracking()
                     .AnyAsync(p => p.PatientId == request.PatientId && !p.IsDeleted);
 
                 if (!patientExists)

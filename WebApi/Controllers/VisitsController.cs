@@ -68,8 +68,7 @@ namespace WebApi.Controllers
                 "Direct visit updates are disabled. Use workflow actions (start/resume/pause/end) via IVisitService.");
         }
 
-        // POST: api/Visits
-        // Creates a new visit record. Requires a valid PatientId in the request body.
+        // POST: api/Visits/start
         [HttpPost("start")]
         public async Task<ActionResult<VisitStartResultDto>> StartVisit(
         [FromBody] VisitStartRequestDto dto)
@@ -81,6 +80,33 @@ namespace WebApi.Controllers
                 dto.ShortNote);
 
             return Ok(result);
+        }
+
+        // POST: api/Visits/{id}/pause
+        [HttpPost("{id}/pause")]
+        public async Task<IActionResult> PauseVisit(int id)
+        {
+            if (!VisitExists(id)) return NotFound($"Visit {id} not found.");
+            await _visitService.PauseVisitAsync(id);
+            return NoContent();
+        }
+
+        // POST: api/Visits/{id}/resume
+        [HttpPost("{id}/resume")]
+        public async Task<IActionResult> ResumeVisit(int id)
+        {
+            if (!VisitExists(id)) return NotFound($"Visit {id} not found.");
+            await _visitService.ResumeVisitAsync(id);
+            return NoContent();
+        }
+
+        // POST: api/Visits/{id}/end
+        [HttpPost("{id}/end")]
+        public async Task<IActionResult> EndVisit(int id)
+        {
+            if (!VisitExists(id)) return NotFound($"Visit {id} not found.");
+            await _visitService.EndVisitAsync(id);
+            return NoContent();
         }
 
         // DELETE: api/Visits/5

@@ -24,10 +24,12 @@ namespace WebApi.Controllers
             return await _context.TestCatalogs
                 .Select(t => new TestCatalogDto
                 {
-                    TestId = t.TestId,
-                    TestName = t.TestName,
-                    TestUnit = t.TestUnit,
-                    NormalRange = t.NormalRange
+                    TestId              = t.TestId,
+                    TestName            = t.TestName,
+                    TestUnit            = t.TestUnit,
+                    NormalRange         = t.NormalRange,
+                    UnitImperial        = t.UnitImperial        ?? string.Empty,
+                    NormalRangeImperial = t.NormalRangeImperial ?? string.Empty
                 })
                 .ToListAsync();
         }
@@ -37,12 +39,7 @@ namespace WebApi.Controllers
         public async Task<ActionResult<TestsCatalog>> GetTestCatalog(int id)
         {
             var testCatalog = await _context.TestCatalogs.FindAsync(id);
-
-            if (testCatalog == null)
-            {
-                return NotFound();
-            }
-
+            if (testCatalog == null) return NotFound();
             return testCatalog;
         }
 
@@ -50,29 +47,18 @@ namespace WebApi.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> PutTestCatalog(int id, TestsCatalog testCatalog)
         {
-            if (id != testCatalog.TestId)
-            {
-                return BadRequest();
-            }
+            if (id != testCatalog.TestId) return BadRequest();
 
             _context.Entry(testCatalog).State = EntityState.Modified;
-
             try
             {
                 await _context.SaveChangesAsync();
             }
             catch (DbUpdateConcurrencyException)
             {
-                if (!TestCatalogExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
+                if (!TestCatalogExists(id)) return NotFound();
+                throw;
             }
-
             return NoContent();
         }
 
@@ -82,9 +68,11 @@ namespace WebApi.Controllers
         {
             var entity = new TestsCatalog
             {
-                TestName = dto.TestName,
-                TestUnit = dto.TestUnit ?? string.Empty,
-                NormalRange = dto.NormalRange ?? string.Empty
+                TestName            = dto.TestName,
+                TestUnit            = dto.TestUnit            ?? string.Empty,
+                NormalRange         = dto.NormalRange         ?? string.Empty,
+                UnitImperial        = dto.UnitImperial,
+                NormalRangeImperial = dto.NormalRangeImperial
             };
 
             _context.TestCatalogs.Add(entity);
@@ -92,10 +80,12 @@ namespace WebApi.Controllers
 
             var result = new TestCatalogDto
             {
-                TestId = entity.TestId,
-                TestName = entity.TestName,
-                TestUnit = entity.TestUnit,
-                NormalRange = entity.NormalRange
+                TestId              = entity.TestId,
+                TestName            = entity.TestName,
+                TestUnit            = entity.TestUnit,
+                NormalRange         = entity.NormalRange,
+                UnitImperial        = entity.UnitImperial        ?? string.Empty,
+                NormalRangeImperial = entity.NormalRangeImperial ?? string.Empty
             };
 
             return CreatedAtAction(nameof(GetTestCatalog), new { id = result.TestId }, result);
@@ -106,20 +96,14 @@ namespace WebApi.Controllers
         public async Task<IActionResult> DeleteTestCatalog(int id)
         {
             var testCatalog = await _context.TestCatalogs.FindAsync(id);
-            if (testCatalog == null)
-            {
-                return NotFound();
-            }
+            if (testCatalog == null) return NotFound();
 
             _context.TestCatalogs.Remove(testCatalog);
             await _context.SaveChangesAsync();
-
             return NoContent();
         }
 
         private bool TestCatalogExists(int id)
-        {
-            return _context.TestCatalogs.Any(e => e.TestId == id);
-        }
+            => _context.TestCatalogs.Any(e => e.TestId == id);
     }
 }

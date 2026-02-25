@@ -2,16 +2,16 @@
 {
     public class LabResultsDto
     {
-        public int LabId { get; set; }
-        public int TestId { get; set; }
+        public int    LabId       { get; set; }
+        public int    TestId      { get; set; }
+        public int    VisitId     { get; set; }
         public string ResultValue { get; set; } = string.Empty;
-        public int VisitId { get; set; }
+        public string Unit        { get; set; } = string.Empty;
+        public string NormalRange { get; set; } = string.Empty;
+        public string Notes       { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
 
-        // DTO-specific properties
-        public string TestName { get; set; } = string.Empty;
-
-        public string TestUnit { get; set; } = string.Empty;
-        public string NormalRange { get; set; } = string.Empty;
+        // Joined from TestsCatalog
+        public string TestName    { get; set; } = string.Empty;
     }
 }
