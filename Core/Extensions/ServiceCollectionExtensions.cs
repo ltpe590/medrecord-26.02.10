@@ -1,4 +1,4 @@
-﻿using Core.Entities;
+using Core.Entities;
 using Core.Http;
 using Core.Interfaces;
 using Core.Interfaces.Repositories;
@@ -48,6 +48,8 @@ namespace Core.Extensions
             // Clinical catalog aggregates systems, sections and registered profiles
             services.AddSingleton<ClinicalCatalog>(sp => new ClinicalCatalog(sp.GetServices<ISpecialtyProfile>()));
             services.AddScoped<ITestCatalogRepository, TestCatalogRepository>();
+            services.AddScoped<IDrugCatalogRepository, DrugCatalogRepository>();
+            services.AddScoped<ILabResultsRepository, LabResultsRepository>();
             services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
 
             // Validators

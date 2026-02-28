@@ -1,14 +1,13 @@
-﻿using Core.Models;
+using Core.Models;
 
-public interface ITestCatalogRepository
+namespace Core.Interfaces.Repositories
 {
-    Task<TestsCatalog?> GetByIdAsync(int testId);
-
-    Task<List<TestsCatalog>> GetAllAsync();
-
-    Task AddAsync(TestsCatalog testCatalog);
-
-    Task UpdateAsync(TestsCatalog testCatalog);
-
-    Task<bool> DeleteAsync(int testId);
+    public interface ITestCatalogRepository
+    {
+        Task<TestsCatalog?> GetByIdAsync(int testId);
+        Task<List<TestsCatalog>> GetAllAsync();
+        Task AddAsync(TestsCatalog testCatalog);
+        Task UpdateAsync(TestsCatalog testCatalog);
+        Task<bool> DeleteAsync(int testId);
+    }
 }

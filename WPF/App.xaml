@@ -1,19 +1,189 @@
-<Application x:Class="WPF.App"
+﻿<Application x:Class="WPF.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
-
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:conv="clr-namespace:WPF.Converters">
     <Application.Resources>
-        <!-- Default theme tokens — overwritten at runtime by ThemeService.Apply() -->
-        <SolidColorBrush x:Key="AppAccent"      Color="#2196F3"/>
-        <SolidColorBrush x:Key="AppAccentDark"  Color="#1565C0"/>
-        <SolidColorBrush x:Key="AppAccentLight" Color="#90CAF9"/>
-        <SolidColorBrush x:Key="AppBackground"  Color="#FAFAFA"/>
-        <SolidColorBrush x:Key="AppSurface"     Color="#FFFFFF"/>
-        <SolidColorBrush x:Key="AppSurface2"    Color="#F5F5F5"/>
-        <SolidColorBrush x:Key="AppForeground"  Color="#1A1A1A"/>
-        <SolidColorBrush x:Key="AppForeground2" Color="#666666"/>
-        <SolidColorBrush x:Key="AppBorder"      Color="#E0E0E0"/>
-        <system:String  x:Key="AppAccentHex"
-                        xmlns:system="clr-namespace:System;assembly=mscorlib">#2196F3</system:String>
+        <!-- PRIMARY ACCENT -->
+        <SolidColorBrush x:Key="AppAccent"        Color="#2196F3"/>
+        <SolidColorBrush x:Key="AppAccentDark"    Color="#1565C0"/>
+        <SolidColorBrush x:Key="AppAccentLight"   Color="#90CAF9"/>
+        <SolidColorBrush x:Key="AppSelected"      Color="#E3F2FD"/>
+        <!-- SURFACES -->
+        <SolidColorBrush x:Key="AppBackground"    Color="#FAFAFA"/>
+        <SolidColorBrush x:Key="AppSurface"       Color="#FFFFFF"/>
+        <SolidColorBrush x:Key="AppSurface2"      Color="#F5F5F5"/>
+        <SolidColorBrush x:Key="AppSurface3"      Color="#F0F0F0"/>
+        <!-- TEXT -->
+        <SolidColorBrush x:Key="AppForeground"    Color="#1A1A1A"/>
+        <SolidColorBrush x:Key="AppForeground2"   Color="#666666"/>
+        <SolidColorBrush x:Key="AppForeground3"   Color="#888888"/>
+        <SolidColorBrush x:Key="AppForeground4"   Color="#BBBBBB"/>
+        <!-- BORDERS -->
+        <SolidColorBrush x:Key="AppBorder"        Color="#E0E0E0"/>
+        <SolidColorBrush x:Key="AppBorderLight"   Color="#CCCCCC"/>
+        <!-- ACTIONS -->
+        <SolidColorBrush x:Key="AppSuccess"       Color="#45A049"/>
+        <SolidColorBrush x:Key="AppSuccessBright" Color="#4CAF50"/>
+        <SolidColorBrush x:Key="AppSuccessLight"  Color="#E8F5E9"/>
+        <SolidColorBrush x:Key="AppWarning"       Color="#FF9800"/>
+        <SolidColorBrush x:Key="AppWarningLight"  Color="#FFF3E0"/>
+        <SolidColorBrush x:Key="AppDanger"        Color="#D32F2F"/>
+        <SolidColorBrush x:Key="AppDangerLight"   Color="#FFEBEE"/>
+        <SolidColorBrush x:Key="AppNeutral"       Color="#6C757D"/>
+        <SolidColorBrush x:Key="AppSlate"         Color="#455A64"/>
+        <!-- LAB (teal) -->
+        <SolidColorBrush x:Key="AppLab"           Color="#00695C"/>
+        <SolidColorBrush x:Key="AppLabAction"     Color="#0097A7"/>
+        <SolidColorBrush x:Key="AppLabScan"       Color="#00796B"/>
+        <SolidColorBrush x:Key="AppLabLight"      Color="#E8F5E9"/>
+        <SolidColorBrush x:Key="AppLabBg"         Color="#E0F7FA"/>
+        <SolidColorBrush x:Key="AppLabBorder"     Color="#B2EBF2"/>
+        <SolidColorBrush x:Key="AppLabNote"       Color="#FFFDE7"/>
+        <!-- AI / purple -->
+        <SolidColorBrush x:Key="AppAi"            Color="#7B1FA2"/>
+        <SolidColorBrush x:Key="AppAiLight"       Color="#F3E5F5"/>
+        <SolidColorBrush x:Key="AppAiLighter"     Color="#EDE7F6"/>
+        <SolidColorBrush x:Key="AppAiBorder"      Color="#CE93D8"/>
+        <SolidColorBrush x:Key="AppAiText"        Color="#6A1B9A"/>
+        <!-- PRESCRIPTION -->
+        <SolidColorBrush x:Key="AppRx"            Color="#0277BD"/>
+        <!-- LEGACY -->
+        <system:String x:Key="AppAccentHex" xmlns:system="clr-namespace:System;assembly=mscorlib">#2196F3</system:String>
+
+        <!-- BASE BUTTON TEMPLATE -->
+        <Style x:Key="RoundedButtonTemplate" TargetType="Button">
+            <Setter Property="Margin" Value="4,3"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Foreground" Value="{StaticResource AppSurface}"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{StaticResource AppAccent}" CornerRadius="8" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <!-- TOOLBAR BUTTONS -->
+        <Style x:Key="BtnPrimary" TargetType="Button" BasedOn="{StaticResource RoundedButtonTemplate}">
+            <Setter Property="Margin" Value="6,4"/>
+            <Setter Property="Background" Value="{StaticResource AppAccent}"/>
+            <Setter Property="MinWidth" Value="90"/><Setter Property="Padding" Value="14,8"/><Setter Property="FontSize" Value="13"/>
+            <Style.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{StaticResource AppAccentDark}"/></Trigger></Style.Triggers>
+        </Style>
+        <Style x:Key="BtnNeutral" TargetType="Button" BasedOn="{StaticResource RoundedButtonTemplate}">
+            <Setter Property="Margin" Value="6,4"/>
+            <Setter Property="Background" Value="{StaticResource AppNeutral}"/>
+            <Setter Property="MinWidth" Value="80"/><Setter Property="Padding" Value="12,8"/><Setter Property="FontSize" Value="13"/>
+            <Style.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{StaticResource AppSlate}"/></Trigger></Style.Triggers>
+        </Style>
+        <!-- SECTION ACTION BUTTONS (compact) -->
+        <Style x:Key="BtnLab" TargetType="Button" BasedOn="{StaticResource RoundedButtonTemplate}">
+            <Setter Property="Background" Value="{StaticResource AppLabAction}"/><Setter Property="Padding" Value="12,6"/><Setter Property="FontSize" Value="12"/>
+            <Style.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{StaticResource AppLab}"/></Trigger></Style.Triggers>
+        </Style>
+        <Style x:Key="BtnLabScan" TargetType="Button" BasedOn="{StaticResource RoundedButtonTemplate}">
+            <Setter Property="Background" Value="{StaticResource AppLabScan}"/><Setter Property="Padding" Value="12,6"/><Setter Property="FontSize" Value="12"/>
+            <Style.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{StaticResource AppLab}"/></Trigger></Style.Triggers>
+        </Style>
+        <Style x:Key="BtnAi" TargetType="Button" BasedOn="{StaticResource RoundedButtonTemplate}">
+            <Setter Property="Background" Value="{StaticResource AppAi}"/><Setter Property="Padding" Value="14,6"/><Setter Property="FontSize" Value="12"/>
+            <Style.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{StaticResource AppAiText}"/></Trigger></Style.Triggers>
+        </Style>
+        <Style x:Key="BtnRx" TargetType="Button" BasedOn="{StaticResource RoundedButtonTemplate}">
+            <Setter Property="Background" Value="{StaticResource AppRx}"/><Setter Property="Padding" Value="12,6"/><Setter Property="FontSize" Value="12"/>
+            <Style.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{StaticResource AppAccentDark}"/></Trigger></Style.Triggers>
+        </Style>
+        <Style x:Key="BtnSuccess" TargetType="Button" BasedOn="{StaticResource RoundedButtonTemplate}">
+            <Setter Property="Background" Value="{StaticResource AppSuccessBright}"/><Setter Property="Padding" Value="12,6"/><Setter Property="FontSize" Value="12"/>
+            <Style.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{StaticResource AppSuccess}"/></Trigger></Style.Triggers>
+        </Style>
+        <Style x:Key="BtnSlate" TargetType="Button" BasedOn="{StaticResource RoundedButtonTemplate}">
+            <Setter Property="Background" Value="{StaticResource AppSlate}"/><Setter Property="Padding" Value="12,6"/><Setter Property="FontSize" Value="12"/>
+            <Style.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{StaticResource AppForeground}"/></Trigger></Style.Triggers>
+        </Style>
+        <Style x:Key="BtnDanger" TargetType="Button" BasedOn="{StaticResource RoundedButtonTemplate}">
+            <Setter Property="Background" Value="Transparent"/><Setter Property="Foreground" Value="{StaticResource AppDanger}"/><Setter Property="Padding" Value="4,2"/><Setter Property="FontSize" Value="14"/>
+            <Style.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{StaticResource AppDangerLight}"/></Trigger></Style.Triggers>
+        </Style>        <!-- ICON BUTTON (mic, small square) -->
+        <Style x:Key="BtnIcon" TargetType="Button" BasedOn="{StaticResource RoundedButtonTemplate}">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{StaticResource AppForeground2}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource AppBorderLight}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Width" Value="32"/><Setter Property="Height" Value="32"/>
+            <Setter Property="FontSize" Value="15"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="6"
+                                BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{StaticResource AppSurface2}"/></Trigger></Style.Triggers>
+        </Style>
+        <!-- DANGER SOLID (small solid-red remove button) -->
+        <Style x:Key="BtnDangerSolid" TargetType="Button" BasedOn="{StaticResource RoundedButtonTemplate}">
+            <Setter Property="Background" Value="{StaticResource AppDanger}"/><Setter Property="Padding" Value="2"/><Setter Property="FontSize" Value="10"/>
+            <Style.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{StaticResource AppForeground}"/></Trigger></Style.Triggers>
+        </Style>
+
+        <!-- VISIT ACTION BAR - BIG BUTTONS -->
+        <Style x:Key="SaveVisitButtonStyle" TargetType="Button" BasedOn="{StaticResource RoundedButtonTemplate}">
+            <Setter Property="Margin" Value="6,4"/>
+            <Setter Property="Background" Value="{StaticResource AppSuccessBright}"/><Setter Property="MinWidth" Value="130"/><Setter Property="Padding" Value="16,11"/><Setter Property="FontSize" Value="15"/>
+            <Style.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{StaticResource AppSuccess}"/></Trigger></Style.Triggers>
+        </Style>
+        <Style x:Key="CompleteVisitButtonStyle" TargetType="Button" BasedOn="{StaticResource RoundedButtonTemplate}">
+            <Setter Property="Margin" Value="6,4"/>
+            <Setter Property="Background" Value="{StaticResource AppAccent}"/><Setter Property="MinWidth" Value="130"/><Setter Property="Padding" Value="16,11"/><Setter Property="FontSize" Value="15"/>
+            <Style.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{StaticResource AppAccentDark}"/></Trigger></Style.Triggers>
+        </Style>
+        <Style x:Key="PauseVisitButtonStyle" TargetType="Button" BasedOn="{StaticResource RoundedButtonTemplate}">
+            <Setter Property="Margin" Value="6,4"/>
+            <Setter Property="Background" Value="{StaticResource AppWarning}"/><Setter Property="MinWidth" Value="130"/><Setter Property="Padding" Value="16,11"/><Setter Property="FontSize" Value="15"/>
+            <Style.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{StaticResource AppSlate}"/></Trigger></Style.Triggers>
+        </Style>
+        <Style x:Key="PrintSummaryButtonStyle" TargetType="Button" BasedOn="{StaticResource RoundedButtonTemplate}">
+            <Setter Property="Background" Value="{StaticResource AppSlate}"/><Setter Property="MinWidth" Value="130"/><Setter Property="Padding" Value="16,11"/><Setter Property="FontSize" Value="15"/>
+            <Style.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{StaticResource AppForeground}"/></Trigger></Style.Triggers>
+        </Style>
+        <!-- SIDEBAR NAV -->
+        <Style x:Key="VerticalTabButton" TargetType="RadioButton">
+            <Setter Property="Background" Value="{StaticResource AppSurface3}"/>
+            <Setter Property="Foreground" Value="{StaticResource AppForeground2}"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="FontSize" Value="14"/><Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="BorderThickness" Value="0"/><Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border Background="{TemplateBinding Background}" BorderThickness="3,0,0,0" BorderBrush="{TemplateBinding BorderBrush}">
+                            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Margin="10">
+                                <TextBlock Text="{TemplateBinding Tag}" FontSize="32" HorizontalAlignment="Center" Margin="0,0,0,10"/>
+                                <TextBlock Text="{TemplateBinding Content}" HorizontalAlignment="Center" FontSize="12" FontWeight="SemiBold"
+                                           Foreground="{TemplateBinding Foreground}" TextWrapping="Wrap" TextAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="{StaticResource AppSelected}"/></Trigger>
+                <Trigger Property="IsChecked" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource AppAccent}"/>
+                    <Setter Property="Foreground" Value="{StaticResource AppSurface}"/>
+                    <Setter Property="BorderBrush" Value="{DynamicResource AppAccentDark}"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <conv:FilePathToThumbnailConverter x:Key="FilePathToThumbnail"/>
     </Application.Resources>
 </Application>

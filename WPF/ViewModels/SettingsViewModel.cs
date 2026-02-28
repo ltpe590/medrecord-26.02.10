@@ -5,13 +5,12 @@ using Core.Interfaces.Services;
 using Core.Models;
 using Microsoft.Extensions.Logging;
 using System.Collections.ObjectModel;
-using System.Windows;
 using WPF.Configuration;
 using WPF.Services;
 
 namespace WPF.ViewModels
 {
-    public class SettingsViewModel : BaseViewModel
+    public partial class SettingsViewModel : BaseViewModel
     {
         #region Dependencies
 
@@ -20,6 +19,17 @@ namespace WPF.ViewModels
         private readonly IUserService        _userService;
         private readonly ILogger<SettingsViewModel> _logger;
         private readonly IAiService          _aiService;
+
+        // ── UI-decoupling events (subscribed by SettingsWindow) ─────────────────
+        public event Action<string, string>? OnShowInfo;
+        public event Action<string, string>? OnShowError;
+        public event Action<string, string>? OnShowWarning;
+        /// <summary>Returns true if user clicked Yes.</summary>
+        public event Func<string, string, bool>? OnConfirmDialog;
+
+        // Captured on construction (UI thread) so background callbacks can marshal
+        private readonly SynchronizationContext? _syncCtx = SynchronizationContext.Current;
+        private void RunOnUi(Action a) { if (_syncCtx != null) _syncCtx.Post(_ => a(), null); else a(); }
 
         // Shared HttpClient — reuse across catalog operations to avoid socket exhaustion
         private static readonly System.Net.Http.HttpClient _httpClient = new();
@@ -132,18 +142,16 @@ namespace WPF.ViewModels
                 {
                     ConnectionStatus      = "✓ Connection successful!";
                     ConnectionStatusColor = "Green";
-                    Application.Current.Dispatcher.Invoke(() =>
-                        MessageBox.Show(
-                            $"Connected to:\n{ApiBaseUrl}\n\nResponse: {result.ResponseTime.TotalMilliseconds:F0} ms",
-                            "Connection Successful", MessageBoxButton.OK, MessageBoxImage.Information));
+                    OnShowInfo?.Invoke("Connection Successful", $"Connected to:\n{ApiBaseUrl}\n\nResponse: {result.ResponseTime.TotalMilliseconds:F0} ms");
+
+
+
                 }
                 else
                 {
                     ConnectionStatus      = $"✗ {result.Message}";
                     ConnectionStatusColor = "Red";
-                    Application.Current.Dispatcher.Invoke(() =>
-                        MessageBox.Show($"Connection failed:\n{result.Message}",
-                            "Connection Failed", MessageBoxButton.OK, MessageBoxImage.Warning));
+                    OnShowWarning?.Invoke("Connection Failed", $"Connection failed:\n{result.Message}");
                 }
             }
             catch (Exception ex)
@@ -165,8 +173,7 @@ namespace WPF.ViewModels
             {
                 var result = await _connectionService.TestApiConnectionAsync(ApiBaseUrl);
                 if (!result.Success)
-                    MessageBox.Show($"Settings saved but connection failed:\n{result.Message}",
-                        "Connection Warning", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    OnShowWarning?.Invoke("Connection Warning", $"Settings saved but connection failed:\n{result.Message}");
                 return result.Success;
             }
             catch (Exception ex)
@@ -181,8 +188,7 @@ namespace WPF.ViewModels
         private void OnConnectionStatusChanged(object? sender, ConnectionStatusChangedEventArgs e)
         {
             if (_isDisposed) return;
-            Application.Current?.Dispatcher.Invoke(() =>
-            {
+            RunOnUi(() => {
                 if (_isDisposed) return;
                 ConnectionStatus      = e.IsConnected ? "✓ Connected" : "✗ Disconnected";
                 ConnectionStatusColor = e.IsConnected ? "Green" : "Red";
@@ -279,18 +285,18 @@ namespace WPF.ViewModels
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error adding test");
-                MessageBox.Show($"Error adding test:\n{ex.Message}", "Error",
-                    MessageBoxButton.OK, MessageBoxImage.Error);
+                OnShowError?.Invoke("Error", $"Error adding test:\n{ex.Message}");
+
             }
         }
 
         public async Task DeleteTestAsync()
         {
             if (SelectedLabTest == null || string.IsNullOrEmpty(_authToken)) return;
-            var confirm = MessageBox.Show(
-                $"Delete test \"{SelectedLabTest.TestName}\"?",
-                "Confirm", MessageBoxButton.YesNo, MessageBoxImage.Warning);
-            if (confirm != MessageBoxResult.Yes) return;
+            if (OnConfirmDialog?.Invoke("Confirm", $"Delete test \"{SelectedLabTest.TestName}\"?") != true) return;
+
+
+
 
             try
             {
@@ -300,8 +306,8 @@ namespace WPF.ViewModels
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error deleting test");
-                MessageBox.Show($"Error deleting test:\n{ex.Message}", "Error",
-                    MessageBoxButton.OK, MessageBoxImage.Error);
+                OnShowError?.Invoke("Error", $"Error deleting test:\n{ex.Message}");
+
             }
         }
 
@@ -414,18 +420,18 @@ namespace WPF.ViewModels
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error adding drug");
-                MessageBox.Show($"Error adding drug:\n{ex.Message}", "Error",
-                    MessageBoxButton.OK, MessageBoxImage.Error);
+                OnShowError?.Invoke("Error", $"Error adding drug:\n{ex.Message}");
+
             }
         }
 
         public async Task DeleteDrugAsync()
         {
             if (SelectedDrug == null || string.IsNullOrEmpty(_authToken)) return;
-            var confirm = MessageBox.Show(
-                $"Delete drug \"{SelectedDrug.BrandName}\"?",
-                "Confirm", MessageBoxButton.YesNo, MessageBoxImage.Warning);
-            if (confirm != MessageBoxResult.Yes) return;
+            if (OnConfirmDialog?.Invoke("Confirm", $"Delete drug \"{SelectedDrug.BrandName}\"?") != true) return;
+
+
+
 
             try
             {
@@ -435,8 +441,8 @@ namespace WPF.ViewModels
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error deleting drug");
-                MessageBox.Show($"Error deleting drug:\n{ex.Message}", "Error",
-                    MessageBoxButton.OK, MessageBoxImage.Error);
+                OnShowError?.Invoke("Error", $"Error deleting drug:\n{ex.Message}");
+
             }
         }
 
@@ -546,372 +552,5 @@ namespace WPF.ViewModels
         // ════════════════════════════════════════════════════════════════════════
         // TAB 6 — AI PROVIDER
         // ════════════════════════════════════════════════════════════════════════
-        #region AI Tab
-
-        // ── Provider selection ────────────────────────────────────────────────
-        private string _aiProvider    = "None";
-        private bool   _aiIsTestingProvider;
-        private string _aiStatus      = string.Empty;
-        private string _aiStatusColor = "Gray";
-
-        public static IReadOnlyList<string> AiProviders { get; } =
-            new[] { "None", "Claude", "ChatGpt", "Ollama" };
-
-        public string AiProvider
-        {
-            get => _aiProvider;
-            set
-            {
-                _aiProvider = value;
-                OnPropertyChanged();
-                OnPropertyChanged(nameof(ShowClaudeFields));
-                OnPropertyChanged(nameof(ShowOpenAiFields));
-                OnPropertyChanged(nameof(ShowOllamaFields));
-                OnPropertyChanged(nameof(CanTestAi));
-                AiStatus = string.Empty;
-            }
-        }
-
-        public bool ShowClaudeFields  => _aiProvider == "Claude";
-        public bool ShowOpenAiFields  => _aiProvider == "ChatGpt";
-        public bool ShowOllamaFields  => _aiProvider == "Ollama";
-
-        public bool AiIsTestingProvider
-        {
-            get => _aiIsTestingProvider;
-            private set { _aiIsTestingProvider = value; OnPropertyChanged(); OnPropertyChanged(nameof(CanTestAi)); }
-        }
-        public string AiStatus
-        {
-            get => _aiStatus;
-            private set { _aiStatus = value; OnPropertyChanged(); }
-        }
-        public string AiStatusColor
-        {
-            get => _aiStatusColor;
-            private set { _aiStatusColor = value; OnPropertyChanged(); }
-        }
-        public bool CanTestAi => !AiIsTestingProvider && _aiProvider != "None";
-
-        // ── Claude fields ─────────────────────────────────────────────────────
-        private string _claudeApiKey = string.Empty;
-        private string _claudeModel  = "claude-opus-4-5";
-
-        public string ClaudeApiKey
-        {
-            get => _claudeApiKey;
-            set { _claudeApiKey = value; OnPropertyChanged(); }
-        }
-        public string ClaudeModel
-        {
-            get => _claudeModel;
-            set { _claudeModel = value; OnPropertyChanged(); }
-        }
-
-        public static IReadOnlyList<string> ClaudeModels { get; } = new[]
-        {
-            "claude-opus-4-6",
-            "claude-sonnet-4-5",
-            "claude-haiku-4-5"
-        };
-
-        // ── OpenAI / ChatGPT fields ───────────────────────────────────────────
-        private string _openAiApiKey = string.Empty;
-        private string _openAiModel  = "gpt-4o";
-
-        public string OpenAiApiKey
-        {
-            get => _openAiApiKey;
-            set { _openAiApiKey = value; OnPropertyChanged(); }
-        }
-        public string OpenAiModel
-        {
-            get => _openAiModel;
-            set { _openAiModel = value; OnPropertyChanged(); }
-        }
-
-        public static IReadOnlyList<string> OpenAiModels { get; } = new[]
-        {
-            "gpt-4o",
-            "gpt-4o-mini",
-            "gpt-4-turbo",
-            "gpt-3.5-turbo"
-        };
-
-        // ── Ollama fields ─────────────────────────────────────────────────────
-        private string _ollamaBaseUrl = "http://localhost:11434";
-        private string _ollamaModel   = string.Empty;
-        private ObservableCollection<string> _ollamaModels = new();
-        private bool   _ollamaDetected;
-        private string _ollamaDetectStatus = "Not checked";
-
-        public string OllamaBaseUrl
-        {
-            get => _ollamaBaseUrl;
-            set { _ollamaBaseUrl = value; OnPropertyChanged(); }
-        }
-        public string OllamaModel
-        {
-            get => _ollamaModel;
-            set { _ollamaModel = value; OnPropertyChanged(); }
-        }
-        public ObservableCollection<string> OllamaModels
-        {
-            get => _ollamaModels;
-            private set { _ollamaModels = value; OnPropertyChanged(); }
-        }
-        public bool OllamaDetected
-        {
-            get => _ollamaDetected;
-            private set
-            {
-                _ollamaDetected = value;
-                OnPropertyChanged();
-                OnPropertyChanged(nameof(OllamaStatusColor));
-            }
-        }
-        public string OllamaStatusColor => _ollamaDetected ? "#4CAF50" : "#9E9E9E";
-        public string OllamaDetectStatus
-        {
-            get => _ollamaDetectStatus;
-            private set { _ollamaDetectStatus = value; OnPropertyChanged(); }
-        }
-
-        /// <summary>
-        /// Probe Ollama at the configured URL, populate OllamaModels,
-        /// and auto-select the first model if none is chosen.
-        /// Called on startup and when the user clicks "Detect".
-        /// </summary>
-        public async Task DetectOllamaAsync()
-        {
-            OllamaDetectStatus = "Detecting...";
-            OllamaDetected     = false;
-
-            var svc  = new AiService(BuildAiSettings());
-            var probe = await svc.ProbeOllamaAsync(_ollamaBaseUrl);
-
-            if (probe.IsAvailable)
-            {
-                OllamaDetected     = true;
-                OllamaDetectStatus = $"✓ Ollama running — {probe.Models.Count} model(s) found";
-                OllamaModels.Clear();
-                foreach (var m in probe.Models) OllamaModels.Add(m);
-
-                // Auto-select if nothing chosen yet
-                if (string.IsNullOrWhiteSpace(OllamaModel) && probe.Models.Count > 0)
-                    OllamaModel = probe.Models[0];
-            }
-            else
-            {
-                OllamaDetected     = false;
-                OllamaDetectStatus = $"✗ {probe.Error}";
-            }
-        }
-
-        /// <summary>Send a minimal test prompt to the active provider.</summary>
-        public async Task TestAiProviderAsync()
-        {
-            if (!CanTestAi) return;
-            AiIsTestingProvider = true;
-            AiStatus            = "Testing...";
-            AiStatusColor       = "Gray";
-
-            var svc    = new AiService(BuildAiSettings());
-            var (ok, msg) = await svc.TestProviderAsync();
-
-            AiStatus      = msg;
-            AiStatusColor = ok ? "Green" : "Red";
-            AiIsTestingProvider = false;
-        }
-
-        // ── Generation settings ───────────────────────────────────────────────
-        private double _aiTemperature = 0.3;
-        private int    _aiMaxTokens   = 1024;
-
-        public double AiTemperature
-        {
-            get => _aiTemperature;
-            set { _aiTemperature = value; OnPropertyChanged(); }
-        }
-        public int AiMaxTokens
-        {
-            get => _aiMaxTokens;
-            set { _aiMaxTokens = value; OnPropertyChanged(); }
-        }
-
-        /// <summary>Build a transient AiSettings from current UI values (used for test + probe).</summary>
-        public AiSettings BuildAiSettings() => new()
-        {
-            Provider      = Enum.TryParse<Core.AI.AiProvider>(_aiProvider, out var p) ? p : Core.AI.AiProvider.None,
-            ClaudeApiKey  = _claudeApiKey,
-            ClaudeModel   = _claudeModel,
-            OpenAiApiKey  = _openAiApiKey,
-            OpenAiModel   = _openAiModel,
-            OllamaBaseUrl = _ollamaBaseUrl,
-            OllamaModel   = _ollamaModel,
-            Temperature   = _aiTemperature,
-            MaxTokens     = _aiMaxTokens
-        };
-
-        #endregion
-
-        // ════════════════════════════════════════════════════════════════════════
-        // SAVE / LOAD / CANCEL
-        // ════════════════════════════════════════════════════════════════════════
-        #region Persistence
-
-        private string _authToken = string.Empty;
-
-        /// <summary>Readable by SettingsWindow to guard catalog loading.</summary>
-        public string AuthToken => _authToken;
-
-        /// <summary>
-        /// Called from SettingsWindow after it opens — loads catalogs that require auth.
-        /// </summary>
-        public void SetAuthToken(string token)
-        {
-            _authToken = token ?? string.Empty;
-        }
-
-        private void LoadCurrentSettings()
-        {
-            // Connection
-            ApiBaseUrl            = _appSettings.ApiBaseUrl ?? "http://localhost:5258";
-            DefaultUser           = !string.IsNullOrEmpty(_appSettings.DefaultUser) ? _appSettings.DefaultUser : UserSettingsManager.GetDefaultUsername();
-            DefaultPassword       = !string.IsNullOrEmpty(_appSettings.DefaultPassword) ? _appSettings.DefaultPassword : UserSettingsManager.GetDefaultPassword();
-            DefaultUserName       = _appSettings.DefaultUserName ?? "Developer";
-            EnableDetailedErrors  = _appSettings.EnableDetailedErrors;
-            HttpTimeoutSeconds    = (int)_appSettings.HttpTimeout.TotalSeconds;
-
-            // Doctor
-            DoctorName      = _appSettings.DoctorName;
-            DoctorTitle     = _appSettings.DoctorTitle;
-            DoctorSpecialty = _appSettings.DoctorSpecialty;
-            DoctorLicense   = _appSettings.DoctorLicense;
-            ClinicName      = _appSettings.ClinicName;
-            ClinicPhone     = _appSettings.ClinicPhone;
-
-            // Appearance
-            ColorScheme      = _appSettings.ColorScheme;
-            IsDarkMode       = _appSettings.IsDarkMode;
-            PreviewAccentHex = ThemeService.ResolveAccent(ColorScheme, DoctorSpecialty);
-
-            // AI
-            AiProvider    = _appSettings.AiProvider;
-            ClaudeApiKey  = _appSettings.ClaudeApiKey;
-            ClaudeModel   = _appSettings.ClaudeModel;
-            OpenAiApiKey  = _appSettings.OpenAiApiKey;
-            OpenAiModel   = _appSettings.OpenAiModel;
-            OllamaBaseUrl = _appSettings.OllamaBaseUrl;
-            OllamaModel   = _appSettings.OllamaModel;
-        }
-
-        private void BuildStaticLists() { /* lists are static — nothing to do */ }
-
-        public void SaveSettings()
-        {
-            try
-            {
-                // Write directly through the IAppSettingsService interface — no fragile type-cast needed
-                _appSettings.ApiBaseUrl           = ApiBaseUrl;
-                _appSettings.DefaultUser          = DefaultUser;
-                _appSettings.DefaultPassword      = DefaultPassword;
-                _appSettings.DefaultUserName      = DefaultUserName;
-                _appSettings.EnableDetailedErrors = EnableDetailedErrors;
-                _appSettings.HttpTimeout          = TimeSpan.FromSeconds(HttpTimeoutSeconds);
-
-                _appSettings.DoctorName      = DoctorName;
-                _appSettings.DoctorTitle     = DoctorTitle;
-                _appSettings.DoctorSpecialty = DoctorSpecialty;
-                _appSettings.DoctorLicense   = DoctorLicense;
-                _appSettings.ClinicName      = ClinicName;
-                _appSettings.ClinicPhone     = ClinicPhone;
-
-                _appSettings.ColorScheme = ColorScheme;
-                _appSettings.IsDarkMode  = IsDarkMode;
-
-                // AI
-                _appSettings.AiProvider    = AiProvider;
-                _appSettings.ClaudeApiKey  = ClaudeApiKey;
-                _appSettings.ClaudeModel   = ClaudeModel;
-                _appSettings.OpenAiApiKey  = OpenAiApiKey;
-                _appSettings.OpenAiModel   = OpenAiModel;
-                _appSettings.OllamaBaseUrl = OllamaBaseUrl;
-                _appSettings.OllamaModel   = OllamaModel;
-
-                // Hot-swap the live singleton so changes take effect immediately
-                _aiService.ApplySettings(BuildAiSettings());
-                _logger.LogInformation("AI settings hot-swapped to provider: {Provider}", AiProvider);
-
-                UserSettingsManager.SaveCredentials(DefaultUser ?? string.Empty, DefaultPassword ?? string.Empty);
-
-                // Persist to disk so settings survive restart
-                _appSettings.Persist();
-
-                // Apply theme immediately
-                ThemeService.Apply(_appSettings);
-
-                _logger.LogInformation("Settings saved and theme applied");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error saving settings");
-                throw;
-            }
-        }
-
-        public void CancelSettings() => LoadCurrentSettings();
-
-        #endregion
-
-        // ════════════════════════════════════════════════════════════════════════
-        // API HELPERS (direct HTTP for catalog CRUD — not in IUserService)
-        // ════════════════════════════════════════════════════════════════════════
-        #region Direct API helpers
-
-        private System.Net.Http.HttpRequestMessage BuildRequest(
-            System.Net.Http.HttpMethod method, string url, object? body = null)
-        {
-            var req = new System.Net.Http.HttpRequestMessage(method, url);
-            req.Headers.Authorization =
-                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", _authToken);
-            if (body is not null)
-            {
-                var json = System.Text.Json.JsonSerializer.Serialize(body);
-                req.Content = new System.Net.Http.StringContent(json, System.Text.Encoding.UTF8, "application/json");
-            }
-            return req;
-        }
-
-        private async Task PostTestCatalogAsync(TestCatalogCreateDto dto)
-        {
-            var req  = BuildRequest(System.Net.Http.HttpMethod.Post, $"{ApiBaseUrl}/api/TestCatalogs", dto);
-            var resp = await _httpClient.SendAsync(req);
-            resp.EnsureSuccessStatusCode();
-        }
-
-        private async Task DeleteTestCatalogAsync(int id)
-        {
-            var req  = BuildRequest(System.Net.Http.HttpMethod.Delete, $"{ApiBaseUrl}/api/TestCatalogs/{id}");
-            var resp = await _httpClient.SendAsync(req);
-            resp.EnsureSuccessStatusCode();
-        }
-
-        private async Task PostDrugCatalogAsync(DrugCreateDto dto)
-        {
-            var req  = BuildRequest(System.Net.Http.HttpMethod.Post, $"{ApiBaseUrl}/api/DrugCatalogs", dto);
-            var resp = await _httpClient.SendAsync(req);
-            resp.EnsureSuccessStatusCode();
-        }
-
-        private async Task DeleteDrugCatalogAsync(int id)
-        {
-            var req  = BuildRequest(System.Net.Http.HttpMethod.Delete, $"{ApiBaseUrl}/api/DrugCatalogs/{id}");
-            var resp = await _httpClient.SendAsync(req);
-            resp.EnsureSuccessStatusCode();
-        }
-
-        #endregion
-            => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 }

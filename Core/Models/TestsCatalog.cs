@@ -1,22 +1,24 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace Core.Models
 {
+    /// <summary>
+    /// EF-mapped catalog entry for a lab test.
+    /// Scalar properties are init-only: set at construction, not mutated afterward.
+    /// Navigation stays settable for EF loading.
+    /// </summary>
     public class TestsCatalog
     {
         [Key]
-        public int TestId { get; set; }
+        public int TestId { get; set; }              // set: EF assigns after INSERT
 
-        public required string TestName        { get; set; } // e.g., "Glucose Fasting"
+        public required string TestName            { get; init; }
+        public required string TestUnit            { get; init; }
+        public required string NormalRange         { get; init; }
+        public string?         UnitImperial        { get; init; }
+        public string?         NormalRangeImperial { get; init; }
 
-        // Primary / SI unit
-        public required string TestUnit        { get; set; } // e.g., "mmol/L"
-        public required string NormalRange     { get; set; } // e.g., "3.9-6.1"
-
-        // Secondary / Imperial (conventional) unit — optional
-        public string? UnitImperial            { get; set; } // e.g., "mg/dL"
-        public string? NormalRangeImperial     { get; set; } // e.g., "70-110"
-
+        // Navigation — settable so EF can populate during loading
         public virtual ICollection<LabResults> LabResults { get; set; } = new List<LabResults>();
     }
 }

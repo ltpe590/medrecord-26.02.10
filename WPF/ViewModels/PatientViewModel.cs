@@ -1,9 +1,9 @@
-﻿using Core.Entities;
+using Core.Entities;
 using Core.Helpers;
 
 namespace WPF.ViewModels
 {
-    public sealed class PatientViewModel
+    public sealed class PatientViewModel : BaseViewModel
     {
         public int PatientId { get; init; }
         public string Name { get; init; } = string.Empty;
@@ -14,8 +14,14 @@ namespace WPF.ViewModels
         public string? BloodGroup { get; init; }
         public string? Allergies { get; init; }
 
+        private bool _isPaused;
+
         /// <summary>True when this patient has a paused visit today.</summary>
-        public bool IsPaused { get; set; }
+        public bool IsPaused
+        {
+            get => _isPaused;
+            set => SetProperty(ref _isPaused, value);
+        }
 
         public string DisplayName => Name;
         public int Age => AgeCalculator.FromDateOfBirth(DateOnly.FromDateTime(DateOfBirth));

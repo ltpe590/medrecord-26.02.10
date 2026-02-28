@@ -1,4 +1,4 @@
-﻿using Core.AI;
+using Core.AI;
 using Core.Configuration;
 using Core.Data.Context;
 using Core.Http;
@@ -29,22 +29,10 @@ namespace WPF
     public partial class App : Application
     {
         private static IHost? _host;
-        private static string _logFile = Path.Combine(AppContext.BaseDirectory, "logs", $"startup_{DateTime.Now:yyyyMMdd_HHmmss}.log");
-
         public static IServiceProvider Services
             => _host?.Services ?? throw new InvalidOperationException("Host not initialized");
 
-        private static void Log(string message)
-        {
-            var msg = $"[{DateTime.Now:HH:mm:ss.fff}] {message}";
-            Debug.WriteLine(msg);
-            try
-            {
-                Directory.CreateDirectory(Path.GetDirectoryName(_logFile)!);
-                File.AppendAllText(_logFile, msg + Environment.NewLine);
-            }
-            catch { /* Ignore file logging errors */ }
-        }
+        private static void Log(string message) => Debug.WriteLine($"[App] {message}");
 
         protected override void OnStartup(StartupEventArgs e)
         {
@@ -56,16 +44,15 @@ namespace WPF
                 Log("✅ base.OnStartup() completed");
 
                 // Global exception handlers - capture unhandled exceptions to a log file for diagnosis
-                AppDomain.CurrentDomain.UnhandledException += (s, ev) => LogUnhandledException(ev.ExceptionObject as Exception, "AppDomain.CurrentDomain.UnhandledException");
+                AppDomain.CurrentDomain.UnhandledException += (s, ev) => Debug.WriteLine($"[App] Unhandled AppDomain exception: {ev.ExceptionObject}");
                 this.DispatcherUnhandledException += (s, ev) =>
                 {
-                    LogUnhandledException(ev.Exception, "Application.DispatcherUnhandledException");
-                    // TEMPORARY: Don't handle - let it crash so we can see the error!
-                    ev.Handled = false;  // Changed from true to false for debugging
+                    Debug.WriteLine($"[App] Unhandled Dispatcher exception: {ev.Exception}");
+                    ev.Handled = true;
                 };
                 TaskScheduler.UnobservedTaskException += (s, ev) =>
                 {
-                    LogUnhandledException(ev.Exception, "TaskScheduler.UnobservedTaskException");
+                    Debug.WriteLine($"[App] Unobserved task exception: {ev.Exception}");
                     ev.SetObserved();
                 };
                 Log("✅ Exception handlers registered");
@@ -80,12 +67,6 @@ namespace WPF
                     .ConfigureServices(ConfigureServices)
                     .Build();
                 Log("✅ Host built successfully");
-
-                // Apply saved theme before any windows appear
-                Log("⏳ Applying saved theme...");
-                var appSettings2 = _host.Services.GetRequiredService<Core.Interfaces.Services.IAppSettingsService>();
-                WPF.Services.ThemeService.Apply(appSettings2);
-                Log("✅ Theme applied");
 
                 Log("⏳ Starting host...");
                 _host.Start();
@@ -190,11 +171,9 @@ namespace WPF
                 Log($"❌ Stack Trace: {ex.StackTrace}");
 
                 // Also log to file
-                LogUnhandledException(ex, "OnStartup");
-
                 // Show error to user
                 MessageBox.Show(
-                    $"Application failed to start:\n\n{ex.Message}\n\nCheck Debug output for details.\n\nLog file: {_logFile}",
+                    $"Application failed to start:\n\n{ex.Message}\n\nCheck Debug output for details.",
                     "Startup Error",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
@@ -206,7 +185,9 @@ namespace WPF
 
         protected override void OnExit(ExitEventArgs e)
         {
-            _host?.StopAsync().GetAwaiter().GetResult();
+            using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(5));
+            try   { _host?.StopAsync(cts.Token).GetAwaiter().GetResult(); }
+            catch (OperationCanceledException) { /* shutdown timeout — acceptable */ }
             _host?.Dispose();
             base.OnExit(e);
         }
@@ -324,10 +305,24 @@ namespace WPF
                 services.AddTransient<MainWindow>(provider => new MainWindow(
                     provider.GetRequiredService<MainWindowViewModel>(),
                     provider.GetRequiredService<WPF.Services.VoiceDictationService>(),
-                    provider.GetRequiredService<IAiService>()
+                    provider.GetRequiredService<IAiService>(),
+                    ()  => provider.GetRequiredService<WPF.Views.SettingsWindow>(),
+                    ()  => provider.GetRequiredService<RegisterPatientViewModel>(),
+                    provider.GetRequiredService<IAppSettingsService>()
                 ));
+                services.AddTransient<Func<RegisterPatientViewModel>>(provider =>
+                    () => provider.GetRequiredService<RegisterPatientViewModel>());
+                services.AddTransient<Func<WPF.Views.SettingsWindow>>(provider =>
+                    () => provider.GetRequiredService<WPF.Views.SettingsWindow>());
                 services.AddTransient<MainWindowViewModel>();
-                services.AddTransient<VisitPageViewModel>();
+                services.AddTransient<VisitPageViewModel>(provider => new VisitPageViewModel(
+                    provider.GetRequiredService<IAppSettingsService>(),
+                    provider.GetRequiredService<IUserService>(),
+                    provider.GetRequiredService<IVisitService>(),
+                    provider.GetRequiredService<ILogger<VisitPageViewModel>>(),
+                    provider.GetRequiredService<IAiService>(),
+                    provider.GetRequiredService<WPF.Services.VoiceDictationService>()
+                ));
                 services.AddTransient<RegisterPatientWindow>();
                 services.AddTransient<RegisterPatientViewModel>();
                 services.AddTransient<SettingsWindow>(provider => new SettingsWindow(
@@ -341,7 +336,6 @@ namespace WPF
                     provider.GetRequiredService<ILogger<SettingsViewModel>>(),
                     provider.GetRequiredService<IAiService>()
                 ));
-                services.AddTransient<DebugWindow>();
                 services.AddSingleton<IVisitMapper, VisitMapper>();
                 Debug.WriteLine("✅ UI components registered");
 
@@ -384,37 +378,6 @@ namespace WPF
             }
         }
 
-        private static void LogUnhandledException(Exception? ex, string source)
-        {
-            try
-            {
-                var baseDir = AppContext.BaseDirectory;
-                var logs = Path.Combine(baseDir, "logs");
-                Directory.CreateDirectory(logs);
-                var file = Path.Combine(logs, $"crash_{DateTime.Now:yyyyMMdd_HHmmss}.log");
-
-                using (var sw = new StreamWriter(file, false))
-                {
-                    sw.WriteLine($"Source: {source}");
-                    sw.WriteLine($"Time: {DateTime.Now:O}");
-                    if (ex != null)
-                    {
-                        sw.WriteLine("Exception: ");
-                        sw.WriteLine(ex.ToString());
-                    }
-                    else
-                    {
-                        sw.WriteLine("Exception object was null.");
-                    }
-                }
-
-                Debug.WriteLine($"Unhandled exception logged to: {file}");
-            }
-            catch
-            {
-                // Swallow any logging failures to avoid escalation during crash handling
-            }
-        }
     }
 }
 

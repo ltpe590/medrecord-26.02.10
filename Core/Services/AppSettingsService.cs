@@ -1,4 +1,4 @@
-﻿using Core.Configuration;
+using Core.Configuration;
 using Core.Interfaces.Services;
 using Microsoft.Extensions.Configuration;
 using System.Text.Json;
@@ -228,6 +228,11 @@ namespace Core.Services
         {
             get => _settings.OllamaModel;
             set => _settings.OllamaModel = value;
+        }
+        public string ClinicTimeZoneId
+        {
+            get => _settings.ClinicTimeZoneId;
+            set => _settings.ClinicTimeZoneId = value;
         }
     }
 }

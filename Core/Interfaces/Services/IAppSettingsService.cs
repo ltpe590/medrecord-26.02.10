@@ -1,4 +1,4 @@
-﻿namespace Core.Interfaces.Services
+namespace Core.Interfaces.Services
 {
     public interface IAppSettingsService
     {
@@ -28,6 +28,10 @@
         string DoctorLicense { get; set; }
         string ClinicName { get; set; }
         string ClinicPhone { get; set; }
+
+        // ── Clinic locale ─────────────────────────────────────────────────────
+        /// <summary>IANA / Windows timezone ID for the clinic, e.g. "Asia/Baghdad".</summary>
+        string ClinicTimeZoneId { get; set; }
 
         // ── Appearance ────────────────────────────────────────────────────────
         string ColorScheme { get; set; }       // "SpecialtyLinked" | "Blue" | …

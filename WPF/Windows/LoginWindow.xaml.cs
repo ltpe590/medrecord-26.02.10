@@ -1,4 +1,3 @@
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Diagnostics;
@@ -15,12 +14,12 @@ namespace WPF.Windows
         public string? AuthToken { get; private set; }
         public bool LoginSuccess { get; private set; }
 
-        public LoginWindow()
+        public LoginWindow(ILogger<LoginWindow> logger, LoginViewModel viewModel)
         {
             InitializeComponent();
 
-            _logger = App.Services.GetRequiredService<ILogger<LoginWindow>>();
-            _viewModel = App.Services.GetRequiredService<LoginViewModel>();
+            _logger    = logger;
+            _viewModel = viewModel;
 
             DataContext = _viewModel;
 

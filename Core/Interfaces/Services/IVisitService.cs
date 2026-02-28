@@ -1,5 +1,4 @@
 ﻿using Core.DTOs;
-using Core.Entities;
 
 namespace Core.Interfaces.Services
 {
@@ -21,8 +20,6 @@ namespace Core.Interfaces.Services
 
         Task EndVisitAsync(int visitId);
 
-        Task<Visit?> GetActiveVisitForPatientAsync(int patientId);
-
-        Task<List<Visit>> GetVisitHistoryForPatientAsync(int patientId);
+        Task<List<VisitDto>> GetVisitHistoryForPatientAsync(int patientId);
     }
 }

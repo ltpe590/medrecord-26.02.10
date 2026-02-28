@@ -1,9 +1,8 @@
-﻿using Core.Data.Context;
 using Core.DTOs;
 using Core.Entities;
+using Core.Interfaces.Repositories;
 using Core.Interfaces.Services;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace WebApi.Controllers
 {
@@ -11,74 +10,53 @@ namespace WebApi.Controllers
     [ApiController]
     public class VisitsController : ControllerBase
     {
-        private readonly ApplicationDbContext _context;
+        private readonly IVisitRepository         _repo;
+        private readonly IVisitService            _visitService;
         private readonly ILogger<VisitsController> _logger;
-        private readonly IVisitService _visitService;
 
-        public VisitsController(ApplicationDbContext context, ILogger<VisitsController> logger, IVisitService visitService)
+        public VisitsController(
+            IVisitRepository          repo,
+            IVisitService             visitService,
+            ILogger<VisitsController> logger)
         {
+            _repo         = repo;
             _visitService = visitService;
-            _context = context;
-            _logger = logger;
+            _logger       = logger;
         }
 
         // GET: api/Visits
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Visit>>> GetVisits()
-        {
-            // Include Patient data for context in the visit list
-            return await _context.Visits.ToListAsync();
-        }
+        public async Task<ActionResult<IEnumerable<Visit>>> GetVisits() =>
+            await _repo.GetAllAsync();
 
         // GET: api/Visits/5
         [HttpGet("{id}")]
         public async Task<ActionResult<Visit>> GetVisit(int id)
         {
-            var visit = await _context.Visits
-                .Include(v => v.Entries)
-                .FirstOrDefaultAsync(v => v.VisitId == id);
-
-            if (visit == null)
-            {
-                return NotFound();
-            }
-
-            return visit;
+            var visit = await _repo.GetWithDetailsAsync(id);
+            return visit == null ? NotFound() : visit;
         }
 
         // GET: api/Visits/patient/5
         [HttpGet("patient/{patientId}")]
-        public async Task<ActionResult<IEnumerable<Visit>>> GetVisitsByPatientId(int patientId)
-        {
-            var visits = await _context.Visits
-                .Where(v => v.PatientId == patientId)
-                .OrderByDescending(v => v.StartedAt)
-                .ToListAsync();
+        public async Task<ActionResult<IEnumerable<Visit>>> GetVisitsByPatientId(int patientId) =>
+            await _repo.GetByPatientIdAsync(patientId);
 
-            return Ok(visits);
-        }
-
-        // PUT: api/Visits/5
-        // Updates an existing visit record.
+        // PUT: api/Visits/5  — disabled by design
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutVisit(int id, Visit visit)
+        public IActionResult PutVisit(int id)
         {
-            _logger.LogWarning("Direct visit updates are disabled. VisitId={VisitId}", id);
+            _logger.LogWarning("Direct visit update attempted. VisitId={VisitId}", id);
             return StatusCode(StatusCodes.Status405MethodNotAllowed,
-                "Direct visit updates are disabled. Use workflow actions (start/resume/pause/end) via IVisitService.");
+                "Direct visit updates are disabled. Use workflow actions (start/pause/resume/end).");
         }
 
         // POST: api/Visits/start
         [HttpPost("start")]
-        public async Task<ActionResult<VisitStartResultDto>> StartVisit(
-        [FromBody] VisitStartRequestDto dto)
+        public async Task<ActionResult<VisitStartResultDto>> StartVisit([FromBody] VisitStartRequestDto dto)
         {
             var result = await _visitService.StartOrResumeVisitAsync(
-                dto.PatientId,
-                dto.PresentingSymptom,
-                dto.Duration,
-                dto.ShortNote);
-
+                dto.PatientId, dto.PresentingSymptom, dto.Duration, dto.ShortNote);
             return Ok(result);
         }
 
@@ -86,7 +64,7 @@ namespace WebApi.Controllers
         [HttpPost("{id}/pause")]
         public async Task<IActionResult> PauseVisit(int id)
         {
-            if (!VisitExists(id)) return NotFound($"Visit {id} not found.");
+            if (!await _repo.ExistsAsync(id)) return NotFound($"Visit {id} not found.");
             await _visitService.PauseVisitAsync(id);
             return NoContent();
         }
@@ -95,7 +73,7 @@ namespace WebApi.Controllers
         [HttpPost("{id}/resume")]
         public async Task<IActionResult> ResumeVisit(int id)
         {
-            if (!VisitExists(id)) return NotFound($"Visit {id} not found.");
+            if (!await _repo.ExistsAsync(id)) return NotFound($"Visit {id} not found.");
             await _visitService.ResumeVisitAsync(id);
             return NoContent();
         }
@@ -104,25 +82,18 @@ namespace WebApi.Controllers
         [HttpPost("{id}/end")]
         public async Task<IActionResult> EndVisit(int id)
         {
-            if (!VisitExists(id)) return NotFound($"Visit {id} not found.");
+            if (!await _repo.ExistsAsync(id)) return NotFound($"Visit {id} not found.");
             await _visitService.EndVisitAsync(id);
             return NoContent();
         }
 
-        // DELETE: api/Visits/5
-        // Deletes a specific visit record.
+        // DELETE: api/Visits/5  — disabled by design
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteVisit(int id)
+        public IActionResult DeleteVisit(int id)
         {
-            _logger.LogWarning("Direct visit deletion is disabled. VisitId={VisitId}", id);
+            _logger.LogWarning("Direct visit deletion attempted. VisitId={VisitId}", id);
             return StatusCode(StatusCodes.Status405MethodNotAllowed,
                 "Direct visit deletion is disabled. End visits using the visit workflow.");
-        }
-
-        // Helper method to check if a visit exists
-        private bool VisitExists(int id)
-        {
-            return _context.Visits.Any(e => e.VisitId == id);
         }
     }
 }

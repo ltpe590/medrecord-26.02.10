@@ -1,28 +1,32 @@
-﻿using Core.Data.Context;
 using Core.DTOs;
 using Core.Entities;
 using Core.Helpers;
 using Core.Interfaces;
+using Core.Interfaces.Repositories;
 using Core.Interfaces.Services;
-using Microsoft.EntityFrameworkCore;
 
 namespace Core.Services
 {
     public class VisitService : IVisitService
     {
-        private readonly ApplicationDbContext _db;
-        private readonly ISpecialtyProfile _obGyneProfile;
-        private readonly IProfileService _profileService;
+        private readonly IVisitRepository    _repo;
+        private readonly ISpecialtyProfile   _obGyneProfile;
+        private readonly IProfileService     _profileService;
+        private readonly IAppSettingsService _appSettings;
 
         public VisitService(
-            ApplicationDbContext db,
-            IProfileService profileService,
-            ISpecialtyProfile obGyneProfile)
+            IVisitRepository    repo,
+            IProfileService     profileService,
+            IAppSettingsService appSettings,
+            ISpecialtyProfile   obGyneProfile)
         {
-            _db = db;
+            _repo           = repo;
             _profileService = profileService;
-            _obGyneProfile = obGyneProfile;
+            _appSettings    = appSettings;
+            _obGyneProfile  = obGyneProfile;
         }
+
+        // ── Start / resume ────────────────────────────────────────────────────
 
         public async Task<VisitStartResultDto> StartOrResumeVisitAsync(
             int patientId,
@@ -33,143 +37,81 @@ namespace Core.Services
             ValidationHelpers.ValidatePatientId(patientId);
             ValidationHelpers.ValidateNotNullOrWhiteSpace(presentingSymptom, nameof(presentingSymptom));
 
-            // 1. Active visit
-            var activeVisit = await GetActiveVisitForPatientAsync(patientId);
+            var activeVisit = await _repo.GetActiveForPatientAsync(patientId);
             if (activeVisit != null)
-            {
-                return new VisitStartResultDto
-                {
-                    VisitId = activeVisit.VisitId,
-                    PatientId = patientId,
-                    IsResumed = false,
-                    StartedAt = activeVisit.StartedAt
-                };
-            }
+                return new VisitStartResultDto { VisitId = activeVisit.VisitId, PatientId = patientId, IsResumed = false, StartedAt = activeVisit.StartedAt };
 
-            // 2) If a paused visit exists for this patient, block starting a new one
-            var pausedVisit = await _db.Visits
-                .Where(v => v.PatientId == patientId && v.EndedAt == null && v.PausedAt != null)
-                .OrderByDescending(v => v.PausedAt)
-                .Select(v => new { v.VisitId, v.StartedAt })
-                .FirstOrDefaultAsync();
-
+            var pausedVisit = await _repo.GetPausedForPatientAsync(patientId);
             if (pausedVisit != null)
-            {
-                return new VisitStartResultDto
-                {
-                    VisitId = pausedVisit.VisitId,   // <-- paused visit id
-                    PatientId = patientId,
-                    HasPausedVisit = true,
-                    PausedVisitId = pausedVisit.VisitId,
-                    IsResumed = false,
-                    StartedAt = pausedVisit.StartedAt
-                };
-            }
+                return new VisitStartResultDto { VisitId = pausedVisit.VisitId, PatientId = patientId, HasPausedVisit = true, PausedVisitId = pausedVisit.VisitId, IsResumed = false, StartedAt = pausedVisit.StartedAt };
 
-            // 3. Create new visit
-            var visitNew = new Visit(patientId, presentingSymptom, duration ?? "", shortNote ?? "");
+            var visit = new Visit(patientId, presentingSymptom, duration ?? "", shortNote ?? "");
+            _profileService.InitializeClinicalSections(visit, new[] { _obGyneProfile });
+            _repo.Add(visit);
+            await _repo.SaveChangesAsync();
 
-            var profiles = new[] { _obGyneProfile };
-            _profileService.InitializeClinicalSections(visitNew, profiles);
-
-            _db.Visits.Add(visitNew);
-            await _db.SaveChangesAsync();
-
-            return new VisitStartResultDto
-            {
-                VisitId = visitNew.VisitId,
-                PatientId = patientId,
-                IsResumed = false,
-                StartedAt = visitNew.StartedAt
-            };
+            return new VisitStartResultDto { VisitId = visit.VisitId, PatientId = patientId, IsResumed = false, StartedAt = visit.StartedAt };
         }
+
+        // ── Lifecycle ─────────────────────────────────────────────────────────
 
         public async Task PauseVisitAsync(int visitId)
         {
             ValidationHelpers.ValidateVisitId(visitId);
-
-            var visit = await _db.Visits.FindAsync(visitId);
-            if (visit == null)
-                throw new InvalidOperationException($"Visit with ID {visitId} not found");
-
+            var visit = await _repo.GetByIdAsync(visitId) ?? throw new InvalidOperationException($"Visit {visitId} not found");
             visit.Pause();
-            await _db.SaveChangesAsync();
+            await _repo.SaveChangesAsync();
         }
 
         public async Task ResumeVisitAsync(int visitId)
         {
             ValidationHelpers.ValidateVisitId(visitId);
-
-            var visit = await _db.Visits.FindAsync(visitId);
-            if (visit == null)
-                throw new InvalidOperationException($"Visit with ID {visitId} not found");
-
+            var visit = await _repo.GetByIdAsync(visitId) ?? throw new InvalidOperationException($"Visit {visitId} not found");
             visit.Resume();
-            await _db.SaveChangesAsync();
+            await _repo.SaveChangesAsync();
         }
 
         public async Task EndVisitAsync(int visitId)
         {
             ValidationHelpers.ValidateVisitId(visitId);
-
-            var visit = await _db.Visits.FindAsync(visitId);
-            if (visit == null)
-                throw new InvalidOperationException($"Visit with ID {visitId} not found");
-
-            if (visit.EndedAt != null)
-                return;
-
+            var visit = await _repo.GetByIdAsync(visitId) ?? throw new InvalidOperationException($"Visit {visitId} not found");
+            if (visit.EndedAt != null) return;
             visit.EndVisit();
-            await _db.SaveChangesAsync();
+            await _repo.SaveChangesAsync();
         }
+
+        // ── Save ──────────────────────────────────────────────────────────────
 
         public async Task<VisitSaveResult> SaveVisitAsync(VisitSaveRequest request)
         {
             try
             {
-                if (request == null)
-                    return VisitSaveResult.CreateFailure("Visit request is required.");
-
-                if (request.PatientId <= 0)
-                    return VisitSaveResult.CreateFailure("Patient ID is required.");
-
-                var patientExists = await _db.Patients
-                    .AsNoTracking()
-                    .AnyAsync(p => p.PatientId == request.PatientId && !p.IsDeleted);
-
-                if (!patientExists)
-                    return VisitSaveResult.CreateFailure("Patient not found.");
-
-                var symptom = string.IsNullOrWhiteSpace(request.Diagnosis) ? "General review" : request.Diagnosis.Trim();
-                var duration = "N/A";
-                var shortNote = string.IsNullOrWhiteSpace(request.Notes) ? "Visit note" : request.Notes.Trim();
-
-                Visit visit;
-
+                if (request == null)                         return VisitSaveResult.CreateFailure("Visit request is required.");
+                if (request.PatientId <= 0)                  return VisitSaveResult.CreateFailure("Patient ID is required.");
+                if (!await _repo.PatientExistsAsync(request.PatientId)) return VisitSaveResult.CreateFailure("Patient not found.");
                 if (request.SaveType == VisitSaveType.Edit && (!request.VisitId.HasValue || request.VisitId.Value <= 0))
                     return VisitSaveResult.CreateFailure("Visit ID is required when editing an existing visit.");
 
+                var symptom   = string.IsNullOrWhiteSpace(request.Diagnosis) ? "General review" : request.Diagnosis.Trim();
+                var shortNote = string.IsNullOrWhiteSpace(request.Notes)     ? "Visit note"     : request.Notes.Trim();
+
+                Visit visit;
                 if (request.VisitId.HasValue && request.VisitId.Value > 0)
                 {
-                    visit = await _db.Visits.FirstOrDefaultAsync(v => v.VisitId == request.VisitId.Value)
-                        ?? throw new InvalidOperationException("Visit not found");
-
-                    visit.UpdatePresentingSymptom(symptom, duration, shortNote);
+                    visit = await _repo.GetByIdAsync(request.VisitId.Value) ?? throw new InvalidOperationException("Visit not found");
+                    visit.UpdatePresentingSymptom(symptom, "N/A", shortNote);
                     visit.UpdateVitals(request.Temperature, request.BloodPressureSystolic, request.BloodPressureDiastolic);
                 }
                 else
                 {
-                    visit = new Visit(request.PatientId, symptom, duration, shortNote);
+                    visit = new Visit(request.PatientId, symptom, "N/A", shortNote);
                     visit.UpdateVitals(request.Temperature, request.BloodPressureSystolic, request.BloodPressureDiastolic);
-                    _db.Visits.Add(visit);
+                    _repo.Add(visit);
                 }
 
-                if (request.SaveType == VisitSaveType.New)
-                {
-                    visit.EndVisit();
-                }
+                if (request.SaveType == VisitSaveType.New) visit.EndVisit();
 
-                await _db.SaveChangesAsync();
+                await _repo.SaveChangesAsync();
                 return VisitSaveResult.CreateSuccess(visit.VisitId, visit.StartedAt);
             }
             catch (Exception ex)
@@ -178,139 +120,55 @@ namespace Core.Services
             }
         }
 
-        #region Lists Management
+        // ── Lists ─────────────────────────────────────────────────────────────
 
-        public async Task<Visit?> GetActiveVisitForPatientAsync(int patientId)
+        public Task<List<VisitDto>> GetVisitHistoryForPatientAsync(int patientId)
         {
             ValidationHelpers.ValidatePatientId(patientId);
-
-            return await _db.Visits
-                .Where(v => v.PatientId == patientId && v.EndedAt == null && v.PausedAt == null)
-                .FirstOrDefaultAsync();
+            return _repo.GetVisitHistoryAsync(patientId);
         }
 
-        public async Task<List<Visit>> GetVisitHistoryForPatientAsync(int patientId)
+        public Task<List<PausedVisitDto>> GetPausedVisitsTodayAsync()
         {
-            ValidationHelpers.ValidatePatientId(patientId);
-
-            return await _db.Visits
-                .Include(v => v.Entries)  // Prevent N+1 query
-                .Where(v => v.PatientId == patientId && v.EndedAt != null)
-                .OrderByDescending(v => v.EndedAt)
-                .AsNoTracking()
-                .ToListAsync();
+            var (start, end) = GetClinicDayRangeUtc();
+            return _repo.GetPausedVisitsTodayAsync(start, end);
         }
 
-        public async Task<List<PausedVisitDto>> GetPausedVisitsTodayAsync()
+        public Task<List<PausedVisitDto>> GetStalePausedVisitsAsync()
         {
-            var (clinicTodayUtcStart, clinicTomorrowUtcStart) = GetClinicDayRangeUtc();
-
-            return await _db.Visits
-                .Join(_db.Patients,
-                    v => v.PatientId,
-                    p => p.PatientId,
-                    (v, p) => new { v, p })
-                .Where(x => x.v.EndedAt == null && x.v.PausedAt != null
-                            && x.v.PausedAt >= clinicTodayUtcStart
-                            && x.v.PausedAt < clinicTomorrowUtcStart
-                            && !x.p.IsDeleted)
-                .OrderByDescending(x => x.v.PausedAt)
-                .Select(x => new PausedVisitDto
-                {
-                    VisitId = x.v.VisitId,
-                    PatientId = x.p.PatientId,
-                    PatientName = x.p.Name,
-                    PausedAt = x.v.PausedAt!.Value,
-                    IsStale = false
-                })
-                .AsNoTracking()
-                .ToListAsync();
+            var (start, _) = GetClinicDayRangeUtc();
+            return _repo.GetStalePausedVisitsAsync(start);
         }
 
-        public async Task<List<PausedVisitDto>> GetStalePausedVisitsAsync()
-        {
-            var (clinicTodayUtcStart, _) = GetClinicDayRangeUtc();
-
-            return await _db.Visits
-                .Join(_db.Patients,
-                    v => v.PatientId,
-                    p => p.PatientId,
-                    (v, p) => new { v, p })
-                .Where(x => x.v.EndedAt == null && x.v.PausedAt != null
-                            && x.v.PausedAt < clinicTodayUtcStart
-                            && !x.p.IsDeleted)
-                .OrderBy(x => x.v.PausedAt)
-                .Select(x => new PausedVisitDto
-                {
-                    VisitId = x.v.VisitId,
-                    PatientId = x.p.PatientId,
-                    PatientName = x.p.Name,
-                    PausedAt = x.v.PausedAt!.Value,
-                    IsStale = true
-                })
-                .AsNoTracking()
-                .ToListAsync();
-        }
-
-        #endregion Lists Management
-
-        #region Specialty Sections
-
-        #region Ob/Gyn
+        // ── Specialty sections ────────────────────────────────────────────────
 
         public async Task SaveObGyneGpaAsync(int visitId, DTOs.ObGyne.GPADto gpa)
         {
             ValidationHelpers.ValidateVisitId(visitId);
+            if (gpa == null) throw new ArgumentNullException(nameof(gpa));
 
-            if (gpa == null)
-                throw new ArgumentNullException(nameof(gpa));
+            var visit = await _repo.GetWithDetailsAsync(visitId)
+                ?? throw new InvalidOperationException($"Visit {visitId} not found");
 
-            var visit = await _db.Visits
-                .Include(v => v.Entries)
-                .FirstOrDefaultAsync(v => v.VisitId == visitId);
+            if (!gpa.Gravida.HasValue && !gpa.Para.HasValue && !gpa.Abortion.HasValue) return;
 
-            if (visit == null)
-                throw new InvalidOperationException($"Visit with ID {visitId} not found");
-
-            var g = gpa.Gravida;
-            var p = gpa.Para;
-            var a = gpa.Abortion;
-
-            // Save only if something is filled (matches your “save filled sections only” rule)
-            if (!g.HasValue && !p.HasValue && !a.HasValue)
-                return;
-
-            visit.AddEntry(
-                _obGyneProfile,
-                "Obstetric History",
-                $"G{g} P{p} A{a}",
-                ClinicalSystem.GyneOb);
-
-            await _db.SaveChangesAsync();
+            visit.AddEntry(_obGyneProfile, "Obstetric History", $"G{gpa.Gravida} P{gpa.Para} A{gpa.Abortion}", ClinicalSystem.GyneOb);
+            await _repo.SaveChangesAsync();
         }
 
-        #endregion Ob/Gyn
+        // ── Private helpers ───────────────────────────────────────────────────
 
-        #endregion Specialty Sections
-
-        #region Helper Methods
-
-        private static (DateTime todayStartUtc, DateTime tomorrowStartUtc) GetClinicDayRangeUtc()
+        /// <summary>Timezone comes from IAppSettingsService.ClinicTimeZoneId — no hardcoded value here.</summary>
+        private (DateTime todayStartUtc, DateTime tomorrowStartUtc) GetClinicDayRangeUtc()
         {
-            var tz = TimeZoneInfo.FindSystemTimeZoneById("Asia/Baghdad");
-
-            var nowUtc = DateTime.UtcNow;
-            var nowLocal = TimeZoneInfo.ConvertTimeFromUtc(nowUtc, tz);
-
-            var todayLocalStart = nowLocal.Date;           // 00:00 Baghdad
-            var tomorrowLocalStart = todayLocalStart.AddDays(1);
-
-            var todayStartUtc = TimeZoneInfo.ConvertTimeToUtc(todayLocalStart, tz);
-            var tomorrowStartUtc = TimeZoneInfo.ConvertTimeToUtc(tomorrowLocalStart, tz);
-
-            return (todayStartUtc, tomorrowStartUtc);
+            var tz            = TimeZoneInfo.FindSystemTimeZoneById(_appSettings.ClinicTimeZoneId);
+            var nowLocal      = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, tz);
+            var todayLocal    = nowLocal.Date;
+            var tomorrowLocal = todayLocal.AddDays(1);
+            return (
+                TimeZoneInfo.ConvertTimeToUtc(todayLocal,    tz),
+                TimeZoneInfo.ConvertTimeToUtc(tomorrowLocal, tz)
+            );
         }
-
-        #endregion Helper Methods
     }
 }

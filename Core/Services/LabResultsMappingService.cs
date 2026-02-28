@@ -1,4 +1,5 @@
-﻿using Core.DTOs;
+﻿using Core.Interfaces.Repositories;
+using Core.DTOs;
 using Core.Interfaces.Services;
 using Core.Models;
 
@@ -44,6 +45,21 @@ namespace Core.Services
                 NormalRange = dto.NormalRange,
                 Notes       = dto.Notes,
                 CreatedAt   = dto.CreatedAt,
+                TestCatalog = testCatalog
+            };
+        }
+
+        /// <inheritdoc/>
+        public LabResults MapFromCreate(LabResultCreateDto dto, TestsCatalog testCatalog)
+        {
+            return new LabResults
+            {
+                TestId      = dto.TestId,
+                VisitId     = dto.VisitId,
+                ResultValue = dto.ResultValue,
+                Unit        = dto.Unit,
+                NormalRange = dto.NormalRange,
+                Notes       = dto.Notes,
                 TestCatalog = testCatalog
             };
         }

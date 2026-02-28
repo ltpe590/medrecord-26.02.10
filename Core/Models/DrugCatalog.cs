@@ -1,18 +1,23 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace Core.Models
 {
+    /// <summary>
+    /// EF-mapped catalog entry for a drug/medication.
+    /// Scalar properties are init-only: set at construction, not mutated afterward.
+    /// The public parameterless constructor is required by EF Core and System.Text.Json.
+    /// </summary>
     public class DrugCatalog
     {
         [Key]
-        public int DrugId { get; set; }
+        public int DrugId { get; set; }          // set: EF assigns after INSERT
 
-        public string BrandName { get; set; } = string.Empty;
-        public string? Composition { get; set; }
-        public string? Form { get; set; }           // e.g., "Tablet"
-        public string? DosageStrength { get; set; } // e.g., "500 mg"
-        public string? Frequency { get; set; }      // e.g., "Twice daily (BID)"
-        public string? Route { get; set; }          // e.g., "Oral"
-        public string? Instructions { get; set; }   // e.g., "Take after meals"
+        public string  BrandName      { get; init; } = string.Empty;
+        public string? Composition    { get; init; }
+        public string? Form           { get; init; }
+        public string? DosageStrength { get; init; }
+        public string? Frequency      { get; init; }
+        public string? Route          { get; init; }
+        public string? Instructions   { get; init; }
     }
 }

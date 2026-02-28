@@ -1,15 +1,17 @@
-﻿using Core.DTOs;
+using Core.AI;
+using Core.DTOs;
+using WPF.Commands;
+using WPF.Helpers;
+using WPF.Services;
+using System.Windows.Input;
+using Core.Http;
 using Core.Interfaces.Services;
 using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net.Http;
-using System.Net.Http.Headers;
-using System.Text.Json;
 using System.Text;
 using System.Threading.Tasks;
 using System;
-using System.Windows;
 
 namespace WPF.ViewModels
 {
@@ -60,19 +62,55 @@ namespace WPF.ViewModels
         private readonly Dictionary<string, PrescriptionLineItem> _lastUsedRx =
             new(StringComparer.OrdinalIgnoreCase);
         private string _authToken = string.Empty;
+
+        // ── Patient context (set during BeginVisitAsync for AI suggest) ────────
+        private int     _patientAge;
+        private string  _patientSex        = string.Empty;
+        private string? _patientBloodGroup;
+
+        // ── Services for AI + dictation ──────────────────────────────────────
+        private readonly Core.AI.IAiService          _ai;
+        private readonly VoiceDictationService       _dictation;
+        private bool                                  _isDictating;
+
+        /// <summary>Raised when the VM needs to show an error. Subscribed by VisitTabControl.xaml.cs.</summary>
+        public event Action<string, string>? OnShowError;
         #endregion
 
         #region Constructor
         public VisitPageViewModel(
-            IAppSettingsService settings,
-            IUserService userService,
-            IVisitService visitService,
-            ILogger<VisitPageViewModel> logger)
+            IAppSettingsService           settings,
+            IUserService                  userService,
+            IVisitService                 visitService,
+            ILogger<VisitPageViewModel>   logger,
+            Core.AI.IAiService            ai,
+            VoiceDictationService         dictation)
         {
-            _settings    = settings;
-            _userService = userService;
+            _settings     = settings;
+            _userService  = userService;
             _visitService = visitService;
-            _logger      = logger;
+            _logger       = logger;
+            _ai           = ai;
+            _dictation    = dictation;
+
+            AiSuggestCommand       = new AsyncRelayCommand(RunAiSuggestAsync, () => !IsAiThinking && HasActiveVisit);
+            ToggleDictationCommand = new RelayCommand(ToggleDictation);
+        }
+
+        // -- Commands
+        public System.Windows.Input.ICommand AiSuggestCommand       { get; }
+        public System.Windows.Input.ICommand ToggleDictationCommand { get; }
+
+        // -- Print context (settings injected, no service locator)
+        public string PrintClinicName  => _settings.ClinicName;
+        public string PrintDoctorLine  => $"{_settings.DoctorTitle} {_settings.DoctorName}";
+        public string PrintClinicPhone => _settings.ClinicPhone;
+
+        // -- Dictation state
+        public bool IsDictating
+        {
+            get => _isDictating;
+            private set => SetProperty(ref _isDictating, value);
         }
         #endregion
 
@@ -206,13 +244,18 @@ namespace WPF.ViewModels
         #endregion
 
         #region Visit Lifecycle
-        public async Task BeginVisitAsync(int visitId, int patientId, string patientName, string authToken)
+        public async Task BeginVisitAsync(
+            int visitId, int patientId, string patientName, string authToken,
+            int patientAge = 0, string patientSex = "", string? patientBloodGroup = null)
         {
-            _patientId      = patientId;
-            _patientName    = patientName;
-            _authToken      = authToken;
-            _visitStartTime = DateTime.Now;
-            _currentVisitId = visitId;
+            _patientId         = patientId;
+            _patientName       = patientName;
+            _authToken         = authToken;
+            _patientAge        = patientAge;
+            _patientSex        = patientSex;
+            _patientBloodGroup = patientBloodGroup;
+            _visitStartTime    = DateTime.Now;
+            _currentVisitId    = visitId;
             OnPropertyChanged(nameof(CurrentVisitId));
             OnPropertyChanged(nameof(HasActiveVisit));
             OnPropertyChanged(nameof(CanSaveVisit));
@@ -230,7 +273,6 @@ namespace WPF.ViewModels
                 StatusMessage = "Saving visit...";
                 var result = await _visitService.SaveVisitAsync(BuildSaveRequest(VisitSaveType.Edit));
                 if (!result.Success) throw new InvalidOperationException(result.Message);
-                await SaveLabResultsAsync();
                 await _visitService.EndVisitAsync(_currentVisitId);
                 _lastSavedTime = DateTime.Now;
                 OnPropertyChanged(nameof(LastSavedText));
@@ -253,7 +295,6 @@ namespace WPF.ViewModels
                 StatusMessage = "Completing visit...";
                 var result = await _visitService.SaveVisitAsync(BuildSaveRequest(VisitSaveType.Edit));
                 if (!result.Success) throw new InvalidOperationException(result.Message);
-                await SaveLabResultsAsync();
                 await _visitService.EndVisitAsync(_currentVisitId);
                 StatusMessage = $"Visit #{_currentVisitId} completed";
                 _logger.LogInformation("Visit {VisitId} completed", _currentVisitId);
@@ -358,15 +399,15 @@ namespace WPF.ViewModels
             try
             {
                 StatusMessage = "Saving new test to catalog...";
-                using var http = new HttpClient();
-                http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _authToken);
-                var dto = new { TestName = testName.Trim(), TestUnit = unitSI.Trim(), NormalRange = rangeSI.Trim(),
-                    UnitImperial = string.IsNullOrWhiteSpace(unitImp) ? null : unitImp.Trim(),
-                    NormalRangeImperial = string.IsNullOrWhiteSpace(rangeImp) ? null : rangeImp.Trim() };
-                var resp = await http.PostAsync($"{_settings.ApiBaseUrl}/api/TestCatalogs",
-                    new StringContent(JsonSerializer.Serialize(dto), Encoding.UTF8, "application/json"));
-                resp.EnsureSuccessStatusCode();
-                AvailableTests = await _userService.GetTestCatalogAsync(_settings.ApiBaseUrl, _authToken);
+                var catalog = CatalogApiHelper.CreateHelper(_settings.ApiBaseUrl, _authToken);
+                await catalog.PostTestAsync(new TestCatalogCreateDto
+                {
+                    TestName            = testName.Trim(),
+                    TestUnit            = unitSI.Trim(),
+                    NormalRange         = rangeSI.Trim(),
+                    UnitImperial        = string.IsNullOrWhiteSpace(unitImp) ? null : unitImp.Trim(),
+                    NormalRangeImperial = string.IsNullOrWhiteSpace(rangeImp) ? null : rangeImp.Trim()
+                });
                 LabTestSearchText = testName.Trim();
                 if (!string.IsNullOrWhiteSpace(unitSI)) LabResultUnit = unitSI;
                 else if (!string.IsNullOrWhiteSpace(unitImp)) LabResultUnit = unitImp;
@@ -432,13 +473,13 @@ namespace WPF.ViewModels
             try
             {
                 StatusMessage = "Saving new drug to catalog...";
-                using var http = new HttpClient();
-                http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _authToken);
-                var dto = new { BrandName = brandName.Trim(), Form = form?.Trim(), DosageStrength = strength?.Trim(),
-                    Route = route?.Trim(), Frequency = frequency?.Trim(), Instructions = instructions?.Trim() };
-                var resp = await http.PostAsync($"{_settings.ApiBaseUrl}/api/DrugCatalogs",
-                    new StringContent(JsonSerializer.Serialize(dto), Encoding.UTF8, "application/json"));
-                resp.EnsureSuccessStatusCode();
+                var catalog = CatalogApiHelper.CreateHelper(_settings.ApiBaseUrl, _authToken);
+                await catalog.PostDrugAsync(new DrugCreateDto
+                {
+                    BrandName      = brandName.Trim(),
+                    Form           = form?.Trim(),
+                    DosageStrength = strength?.Trim()
+                });
                 AvailableDrugs = await _userService.GetDrugCatalogAsync(_settings.ApiBaseUrl, _authToken);
                 var newDrug = AvailableDrugs.FirstOrDefault(
                     d => string.Equals(d.BrandName, brandName.Trim(), StringComparison.OrdinalIgnoreCase));
@@ -500,32 +541,83 @@ namespace WPF.ViewModels
             if (!string.IsNullOrWhiteSpace(Diagnosis)) sb.AppendLine($"\nWorking Diagnosis:\n{Diagnosis}");
             return sb.ToString();
         }
+
+        private async Task RunAiSuggestAsync()
+        {
+            if (IsAiThinking || !HasActiveVisit) return;
+            const string SystemPrompt =
+                "You are an expert clinical decision support assistant. " +
+                "Given the patient data below, provide a concise differential diagnosis.\n" +
+                "1. Most likely diagnosis with brief reasoning\n2-4. Other differentials\n" +
+                "Red flags:\nNext steps:\nKeep it clinically practical.";
+            var ctx = BuildClinicalContext(_patientName, _patientAge, _patientSex, _patientBloodGroup);
+            IsAiThinking = true;
+            AiSuggestions = string.Empty;
+            try
+            {
+                var result = await AiHelper.CompleteAsync(_ai, ctx, SystemPrompt);
+                AiSuggestions = string.IsNullOrWhiteSpace(result)
+                    ? "No response from AI provider. Check Settings."
+                    : result.Trim();
+            }
+            catch (Exception ex)
+            {
+                AiSuggestions = $"Error: {ex.Message}";
+                _logger.LogError(ex, "AI suggest failed for visit {VisitId}", _currentVisitId);
+            }
+            finally
+            {
+                IsAiThinking = false;
+                System.Windows.Input.CommandManager.InvalidateRequerySuggested();
+            }
+        }
+
+        private void ToggleDictation()
+        {
+            if (_dictation.IsListening) { _dictation.Stop(); IsDictating = false; }
+            else
+            {
+                IsDictating = true;
+                _ = _dictation.StartAsync(text => { Notes += text; });
+            }
+        }
         #endregion
 
         #region Private Helpers
         private VisitSaveRequest BuildSaveRequest(VisitSaveType saveType) => new()
         {
-            VisitId = _currentVisitId, PatientId = _patientId,
-            Diagnosis = Diagnosis, Notes = Notes,
-            Temperature = Temperature, BloodPressureSystolic = BPSystolic, BloodPressureDiastolic = BPDiastolic,
-            Gravida = Gravida, Para = Para, Abortion = Abortion, LMPDate = LMPDate,
-            SaveType = saveType, AuthToken = _authToken
+            VisitId               = _currentVisitId,
+            PatientId             = _patientId,
+            Diagnosis             = Diagnosis,
+            Notes                 = Notes,
+            Temperature           = Temperature,
+            BloodPressureSystolic  = BPSystolic,
+            BloodPressureDiastolic = BPDiastolic,
+            Gravida    = Gravida, Para = Para, Abortion = Abortion, LMPDate = LMPDate,
+            SaveType   = saveType,
+            AuthToken  = _authToken,
+            LabResults = LabResults.Select(l => new LabResultCreateDto
+            {
+                TestId      = l.TestId,
+                VisitId     = _currentVisitId,
+                ResultValue = l.ResultValue,
+                Unit        = l.Unit,
+                NormalRange = l.NormalRange,
+                Notes       = l.Notes
+            }).ToList(),
+            Prescriptions = Prescriptions.Select(p => new PrescriptionCreateDto
+            {
+                DrugId       = p.DrugId,
+                VisitId      = _currentVisitId,
+                Dosage       = p.Dose,
+                Route        = p.Route,
+                Frequency    = p.Frequency,
+                DurationDays = p.DurationDays,
+                Instructions = p.Instructions
+            }).ToList()
         };
 
-        private async Task SaveLabResultsAsync()
-        {
-            if (LabResults.Count == 0) return;
-            using var http = new HttpClient();
-            http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", _authToken);
-            await http.DeleteAsync($"{_settings.ApiBaseUrl}/api/LabResults/visit/{_currentVisitId}");
-            foreach (var lab in LabResults)
-            {
-                var dto = new { lab.TestId, VisitId = _currentVisitId, lab.ResultValue, lab.Unit, lab.NormalRange, lab.Notes };
-                var resp = await http.PostAsync($"{_settings.ApiBaseUrl}/api/LabResults",
-                    new StringContent(JsonSerializer.Serialize(dto), Encoding.UTF8, "application/json"));
-                resp.EnsureSuccessStatusCode();
-            }
-        }
+
 
         private async Task LoadTestCatalogAsync()
         {
@@ -556,8 +648,7 @@ namespace WPF.ViewModels
         }
 
         private void ShowError(string message, string title = "Error") =>
-            Application.Current.Dispatcher.Invoke(() =>
-                MessageBox.Show(message, title, MessageBoxButton.OK, MessageBoxImage.Warning));
+            OnShowError?.Invoke(title, message);
         #endregion
     }
 }

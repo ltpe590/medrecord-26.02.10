@@ -1,8 +1,8 @@
-﻿using Core.Data.Context;
-using Core.DTOs;
+﻿using Core.DTOs;
+using Core.Interfaces.Repositories;
+using Core.Interfaces.Services;
 using Core.Models;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace WebApi.Controllers
 {
@@ -10,86 +10,54 @@ namespace WebApi.Controllers
     [ApiController]
     public class LabResultsController : ControllerBase
     {
-        private readonly ApplicationDbContext _context;
+        private readonly ILabResultsRepository    _labRepo;
+        private readonly ITestCatalogRepository   _testRepo;
+        private readonly IVisitRepository         _visitRepo;
+        private readonly ILabResultsMappingService _mapper;
 
-        public LabResultsController(ApplicationDbContext context)
+        public LabResultsController(
+            ILabResultsRepository    labRepo,
+            ITestCatalogRepository   testRepo,
+            IVisitRepository         visitRepo,
+            ILabResultsMappingService mapper)
         {
-            _context = context;
+            _labRepo  = labRepo;
+            _testRepo = testRepo;
+            _visitRepo = visitRepo;
+            _mapper   = mapper;
         }
 
         // GET: api/LabResults/visit/5
         [HttpGet("visit/{visitId}")]
-        public async Task<ActionResult<IEnumerable<LabResultsDto>>> GetByVisit(int visitId)
-        {
-            return await _context.LabResults
-                .Where(r => r.VisitId == visitId)
-                .Include(r => r.TestCatalog)
-                .Select(r => new LabResultsDto
-                {
-                    LabId       = r.LabId,
-                    TestId      = r.TestId,
-                    VisitId     = r.VisitId,
-                    ResultValue = r.ResultValue,
-                    Unit        = r.Unit,
-                    NormalRange = r.NormalRange,
-                    Notes       = r.Notes,
-                    CreatedAt   = r.CreatedAt,
-                    TestName    = r.TestCatalog.TestName
-                })
-                .ToListAsync();
-        }
+        public async Task<ActionResult<IEnumerable<LabResultsDto>>> GetByVisit(int visitId) =>
+            await _labRepo.GetByVisitAsync(visitId);
 
         // POST: api/LabResults
         [HttpPost]
         public async Task<ActionResult<LabResultsDto>> PostLabResult(LabResultCreateDto dto)
         {
-            // Verify visit exists
-            if (!await _context.Visits.AnyAsync(v => v.VisitId == dto.VisitId))
+            if (!await _visitRepo.ExistsAsync(dto.VisitId))
                 return NotFound($"Visit {dto.VisitId} not found.");
 
-            // Verify test exists
-            var test = await _context.TestCatalogs.FindAsync(dto.TestId);
+            var test = await _testRepo.GetByIdAsync(dto.TestId);
             if (test == null)
                 return NotFound($"Test {dto.TestId} not found in catalog.");
 
-            var entity = new LabResults
-            {
-                TestId      = dto.TestId,
-                VisitId     = dto.VisitId,
-                ResultValue = dto.ResultValue,
-                Unit        = dto.Unit,
-                NormalRange = dto.NormalRange,
-                Notes       = dto.Notes,
-                TestCatalog = test
-            };
+            var entity = _mapper.MapFromCreate(dto, test);
 
-            _context.LabResults.Add(entity);
-            await _context.SaveChangesAsync();
+            _labRepo.Add(entity);
+            await _labRepo.SaveChangesAsync();
 
             return CreatedAtAction(nameof(GetByVisit), new { visitId = entity.VisitId },
-                new LabResultsDto
-                {
-                    LabId       = entity.LabId,
-                    TestId      = entity.TestId,
-                    VisitId     = entity.VisitId,
-                    ResultValue = entity.ResultValue,
-                    Unit        = entity.Unit,
-                    NormalRange = entity.NormalRange,
-                    Notes       = entity.Notes,
-                    CreatedAt   = entity.CreatedAt,
-                    TestName    = test.TestName
-                });
+                _mapper.MapToDto(entity));
         }
 
-        // DELETE: api/LabResults/visit/5  (clear all results for a visit before re-saving)
+        // DELETE: api/LabResults/visit/5
         [HttpDelete("visit/{visitId}")]
         public async Task<IActionResult> DeleteByVisit(int visitId)
         {
-            var rows = await _context.LabResults
-                .Where(r => r.VisitId == visitId)
-                .ToListAsync();
-            _context.LabResults.RemoveRange(rows);
-            await _context.SaveChangesAsync();
+            await _labRepo.DeleteByVisitAsync(visitId);
+            await _labRepo.SaveChangesAsync();
             return NoContent();
         }
     }

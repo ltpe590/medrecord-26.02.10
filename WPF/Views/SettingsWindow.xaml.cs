@@ -20,6 +20,11 @@ namespace WPF.Views
             InitializeComponent();
             DataContext = viewModel;
             _viewModel  = viewModel;
+            _viewModel.OnShowInfo    += (t, m) => MessageBox.Show(m, t, MessageBoxButton.OK, MessageBoxImage.Information);
+            _viewModel.OnShowError   += (t, m) => MessageBox.Show(m, t, MessageBoxButton.OK, MessageBoxImage.Error);
+            _viewModel.OnShowWarning += (t, m) => MessageBox.Show(m, t, MessageBoxButton.OK, MessageBoxImage.Warning);
+            _viewModel.OnConfirmDialog += (t, m) =>
+                MessageBox.Show(m, t, MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes;
             _logger     = logger;
 
             Loaded  += OnWindowLoaded;

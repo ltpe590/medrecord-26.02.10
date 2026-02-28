@@ -91,6 +91,8 @@ builder.Services.AddValidatorsFromAssemblyContaining<PatientCreateDtoValidator>(
 builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
 builder.Services.AddScoped<IPatientRepository, PatientRepository>();
 builder.Services.AddScoped<IVisitRepository, VisitRepository>();
+builder.Services.AddScoped<IDrugCatalogRepository, DrugCatalogRepository>();
+builder.Services.AddScoped<ILabResultsRepository, LabResultsRepository>();
 builder.Services.AddScoped<ITestCatalogRepository, TestCatalogRepository>();
 
 // ===== Services =====

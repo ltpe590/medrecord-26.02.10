@@ -1,8 +1,7 @@
-﻿using Core.Data.Context;
 using Core.DTOs;
+using Core.Interfaces.Repositories;
 using Core.Models;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace WebApi.Controllers
 {
@@ -10,37 +9,32 @@ namespace WebApi.Controllers
     [ApiController]
     public class TestCatalogsController : ControllerBase
     {
-        private readonly ApplicationDbContext _context;
+        private readonly ITestCatalogRepository _repo;
 
-        public TestCatalogsController(ApplicationDbContext context)
-        {
-            _context = context;
-        }
+        public TestCatalogsController(ITestCatalogRepository repo) => _repo = repo;
 
         // GET: api/TestCatalogs
         [HttpGet]
         public async Task<ActionResult<IEnumerable<TestCatalogDto>>> GetTestCatalogs()
         {
-            return await _context.TestCatalogs
-                .Select(t => new TestCatalogDto
-                {
-                    TestId              = t.TestId,
-                    TestName            = t.TestName,
-                    TestUnit            = t.TestUnit,
-                    NormalRange         = t.NormalRange,
-                    UnitImperial        = t.UnitImperial        ?? string.Empty,
-                    NormalRangeImperial = t.NormalRangeImperial ?? string.Empty
-                })
-                .ToListAsync();
+            var all = await _repo.GetAllAsync();
+            return all.Select(t => new TestCatalogDto
+            {
+                TestId              = t.TestId,
+                TestName            = t.TestName,
+                TestUnit            = t.TestUnit,
+                NormalRange         = t.NormalRange,
+                UnitImperial        = t.UnitImperial        ?? string.Empty,
+                NormalRangeImperial = t.NormalRangeImperial ?? string.Empty
+            }).ToList();
         }
 
         // GET: api/TestCatalogs/5
         [HttpGet("{id}")]
         public async Task<ActionResult<TestsCatalog>> GetTestCatalog(int id)
         {
-            var testCatalog = await _context.TestCatalogs.FindAsync(id);
-            if (testCatalog == null) return NotFound();
-            return testCatalog;
+            var entity = await _repo.GetByIdAsync(id);
+            return entity == null ? NotFound() : entity;
         }
 
         // PUT: api/TestCatalogs/5
@@ -48,17 +42,7 @@ namespace WebApi.Controllers
         public async Task<IActionResult> PutTestCatalog(int id, TestsCatalog testCatalog)
         {
             if (id != testCatalog.TestId) return BadRequest();
-
-            _context.Entry(testCatalog).State = EntityState.Modified;
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!TestCatalogExists(id)) return NotFound();
-                throw;
-            }
+            await _repo.UpdateAsync(testCatalog);
             return NoContent();
         }
 
@@ -75,10 +59,9 @@ namespace WebApi.Controllers
                 NormalRangeImperial = dto.NormalRangeImperial
             };
 
-            _context.TestCatalogs.Add(entity);
-            await _context.SaveChangesAsync();
+            await _repo.AddAsync(entity);
 
-            var result = new TestCatalogDto
+            return CreatedAtAction(nameof(GetTestCatalog), new { id = entity.TestId }, new TestCatalogDto
             {
                 TestId              = entity.TestId,
                 TestName            = entity.TestName,
@@ -86,24 +69,15 @@ namespace WebApi.Controllers
                 NormalRange         = entity.NormalRange,
                 UnitImperial        = entity.UnitImperial        ?? string.Empty,
                 NormalRangeImperial = entity.NormalRangeImperial ?? string.Empty
-            };
-
-            return CreatedAtAction(nameof(GetTestCatalog), new { id = result.TestId }, result);
+            });
         }
 
         // DELETE: api/TestCatalogs/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteTestCatalog(int id)
         {
-            var testCatalog = await _context.TestCatalogs.FindAsync(id);
-            if (testCatalog == null) return NotFound();
-
-            _context.TestCatalogs.Remove(testCatalog);
-            await _context.SaveChangesAsync();
-            return NoContent();
+            var deleted = await _repo.DeleteAsync(id);
+            return deleted ? NoContent() : NotFound();
         }
-
-        private bool TestCatalogExists(int id)
-            => _context.TestCatalogs.Any(e => e.TestId == id);
     }
 }

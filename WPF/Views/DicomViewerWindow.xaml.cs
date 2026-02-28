@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -90,7 +90,7 @@ namespace WPF.Views
                 for (int i = 0; i < pixelCount && (i * 2 + 1) < bytes.Length; i++)
                 {
                     ushort raw = (ushort)(bytes[i * 2] | (bytes[i * 2 + 1] << 8));
-                    result[i]  = isSigned ? (short)raw : (short)Math.Min(raw, (int)short.MaxValue);
+                    result[i]  = isSigned ? (short)raw : (short)Math.Min((int)raw, (int)short.MaxValue);
                 }
             }
             double slope     = _dataset!.GetSingleValueOrDefault(DicomTag.RescaleSlope,     1.0);

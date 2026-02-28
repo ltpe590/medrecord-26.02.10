@@ -33,6 +33,10 @@ namespace Core.Configuration
         public string ClinicName { get; set; } = string.Empty;
         public string ClinicPhone { get; set; } = string.Empty;
 
+        // ── Clinic locale ─────────────────────────────────────────────────────
+        /// <summary>IANA / Windows timezone ID for the clinic.</summary>
+        public string ClinicTimeZoneId { get; set; } = "Asia/Baghdad";
+
         // ── Appearance ────────────────────────────────────────────────────────
         public string ColorScheme { get; set; } = "SpecialtyLinked";
         public bool IsDarkMode { get; set; } = false;

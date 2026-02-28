@@ -1,7 +1,7 @@
-﻿using Core.Data.Context;
+﻿using Core.DTOs;
+using Core.Interfaces.Repositories;
 using Core.Models;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace WebApi.Controllers
 {
@@ -9,93 +9,74 @@ namespace WebApi.Controllers
     [ApiController]
     public class DrugCatalogsController : ControllerBase
     {
-        private readonly ApplicationDbContext _context;
+        private readonly IDrugCatalogRepository _repo;
 
-        public DrugCatalogsController(ApplicationDbContext context)
-        {
-            _context = context;
-        }
+        public DrugCatalogsController(IDrugCatalogRepository repo) => _repo = repo;
 
         // GET: api/DrugCatalogs
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<DrugCatalog>>> GetDrugCatalogs()
-        {
-            return await _context.DrugCatalogs.ToListAsync();
-        }
+        public async Task<ActionResult<IEnumerable<DrugCatalog>>> GetDrugCatalogs() =>
+            await _repo.GetAllAsync();
 
         // GET: api/DrugCatalogs/5
         [HttpGet("{id}")]
         public async Task<ActionResult<DrugCatalog>> GetDrugCatalog(int id)
         {
-            var drugCatalog = await _context.DrugCatalogs.FindAsync(id);
-
-            if (drugCatalog == null)
-            {
-                return NotFound();
-            }
-
-            return drugCatalog;
+            var entity = await _repo.GetByIdAsync(id);
+            return entity == null ? NotFound() : entity;
         }
 
         // PUT: api/DrugCatalogs/5
         [HttpPut("{id}")]
-        public async Task<IActionResult> PutDrugCatalog(int id, DrugCatalog drugCatalog)
+        public async Task<IActionResult> PutDrugCatalog(int id, DrugCatalogDto dto)
         {
-            if (id != drugCatalog.DrugId)
-            {
-                return BadRequest();
-            }
+            if (!await _repo.ExistsAsync(id)) return NotFound();
 
-            _context.Entry(drugCatalog).State = EntityState.Modified;
-
-            try
+            // Build a disconnected entity from the DTO — EF Update() attaches it as Modified.
+            var entity = new DrugCatalog
             {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!DrugCatalogExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
-            }
+                DrugId        = id,
+                BrandName     = dto.BrandName,
+                Composition   = dto.Composition,
+                Form          = dto.Form,
+                DosageStrength = dto.DosageStrength,
+                Frequency     = dto.Frequency,
+                Route         = dto.Route,
+                Instructions  = dto.Instructions
+            };
 
+            _repo.Update(entity);
+            await _repo.SaveChangesAsync();
             return NoContent();
         }
 
         // POST: api/DrugCatalogs
         [HttpPost]
-        public async Task<ActionResult<DrugCatalog>> PostDrugCatalog(DrugCatalog drugCatalog)
+        public async Task<ActionResult<DrugCatalog>> PostDrugCatalog(DrugCreateDto dto)
         {
-            _context.DrugCatalogs.Add(drugCatalog);
-            await _context.SaveChangesAsync();
+            var entity = new DrugCatalog
+            {
+                BrandName     = dto.BrandName,
+                Composition   = dto.Composition,
+                Form          = dto.Form,
+                DosageStrength = dto.DosageStrength
+            };
 
-            return CreatedAtAction("GetDrugCatalog", new { id = drugCatalog.DrugId }, drugCatalog);
+            _repo.Add(entity);
+            await _repo.SaveChangesAsync();
+            return CreatedAtAction(nameof(GetDrugCatalog), new { id = entity.DrugId }, entity);
         }
 
         // DELETE: api/DrugCatalogs/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteDrugCatalog(int id)
         {
-            var drugCatalog = await _context.DrugCatalogs.FindAsync(id);
-            if (drugCatalog == null)
-            {
-                return NotFound();
-            }
+            var entity = await _repo.GetByIdAsync(id);
+            if (entity == null) return NotFound();
 
-            _context.DrugCatalogs.Remove(drugCatalog);
-            await _context.SaveChangesAsync();
-
+            _repo.Remove(entity);
+            await _repo.SaveChangesAsync();
             return NoContent();
-        }
-
-        private bool DrugCatalogExists(int id)
-        {
-            return _context.DrugCatalogs.Any(e => e.DrugId == id);
         }
     }
 }
