@@ -1,52 +1,37 @@
-using Core.Entities;
 using Core.Data.Context;
+using Core.Entities;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.EntityFrameworkCore;
 
-namespace Core.Data.Seeding;
-
-/// <summary>
-/// Seeds default users into the database (e.g., admin account).
-/// </summary>
-public static class UserSeeder
+namespace Core.Data.Seeding
 {
     /// <summary>
-    /// Seeds the admin user if it doesn't already exist.
+    /// Seeds the default admin user on first startup if it doesn't exist.
+    /// Called from WebApi Program.cs.
     /// </summary>
-    public static async Task SeedAdminUserAsync(ApplicationDbContext context, IUserStore<AppUser> userStore, IPasswordHasher<AppUser> passwordHasher)
+    public static class UserSeeder
     {
-        const string adminUsername = "admin";
-        const string adminPassword = "Admin123!";
-        const int adminSpecialtyProfileId = 1;
-
-        // Check if admin already exists
-        var adminExists = await context.Users.AnyAsync(u => u.UserName == adminUsername);
-        if (adminExists)
-            return;
-
-        // Create admin user
-        var adminUser = new AppUser
+        public static async Task SeedAdminUserAsync(
+            ApplicationDbContext db,
+            IUserStore<AppUser>   userStore,
+            IPasswordHasher<AppUser> passwordHasher)
         {
-            UserName = adminUsername,
-            NormalizedUserName = adminUsername.ToUpper(),
-            Email = "admin@medrecord.local",
-            NormalizedEmail = "admin@medrecord.local".ToUpper(),
-            EmailConfirmed = true,
-            PhoneNumber = null,
-            PhoneNumberConfirmed = false,
-            IsActive = true,
-            SpecialtyProfileId = adminSpecialtyProfileId,
-            CreatedAt = DateTime.UtcNow,
-            HasFingerprintEnrolled = false,
-            FingerprintTemplate = Array.Empty<byte>()
-        };
+            if (db.Users.Any()) return;
 
-        // Hash password and set it
-        adminUser.PasswordHash = passwordHasher.HashPassword(adminUser, adminPassword);
-        adminUser.SecurityStamp = Guid.NewGuid().ToString();
+            var user = new AppUser
+            {
+                UserName           = "admin",
+                NormalizedUserName = "ADMIN",
+                Email              = "admin@medrecord.local",
+                NormalizedEmail    = "ADMIN@MEDRECORD.LOCAL",
+                EmailConfirmed     = true,
+                SecurityStamp      = Guid.NewGuid().ToString(),
+            };
 
-        // Add to context and save
-        context.Users.Add(adminUser);
-        await context.SaveChangesAsync();
+            user.PasswordHash = passwordHasher.HashPassword(user, "Admin@123");
+
+            db.Users.Add(user);
+            await db.SaveChangesAsync();
+            Console.WriteLine("[UserSeeder] Admin user created.");
+        }
     }
 }

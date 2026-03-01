@@ -11,24 +11,16 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border CornerRadius="8" Padding="{TemplateBinding Padding}">
-                            <Grid>
-                                <!-- 1. The original dynamic background -->
-                                <Border Background="{StaticResource AppAccent}" 
-                    CornerRadius="8"/>
+                        <!-- Main container now uses the darker/bluer resource -->
+                        <Border Background="{DynamicResource AppAccentDark}"
+            CornerRadius="8"
+            Padding="{TemplateBinding Padding}">
 
-                                <!-- 2. Darker & Bluer Overlay -->
-                                <!-- #60001A4D: 38% Alpha, Deep Navy Blue -->
-                                <Border Background="#60001A4D" 
-                    CornerRadius="8"
-                    IsHitTestVisible="False"/>
-
-                                <!-- 3. The actual content -->
-                                <ContentPresenter HorizontalAlignment="Center"
-                              VerticalAlignment="Center"/>
-                            </Grid>
+                            <ContentPresenter HorizontalAlignment="Center"
+                          VerticalAlignment="Center"/>
                         </Border>
                     </ControlTemplate>
+
 
                 </Setter.Value>
             </Setter>
@@ -57,15 +49,15 @@
     </UserControl.Resources>
 
     <ScrollViewer x:Name="MainScroller" VerticalScrollBarVisibility="Auto"
-                  Padding="20"
+                  Padding="20" Background="{DynamicResource AppBackground3}"
                   PreviewKeyDown="VisitTab_PreviewKeyDown"
                   PreviewMouseWheel="VisitTab_PreviewMouseWheel">
         <StackPanel>
-                    <Border Background="{StaticResource AppAccent}"
+            <Border Background="{DynamicResource AppAccent}"
                             CornerRadius="8"
                             Padding="15"
                             Margin="20,0,20,8">
-                        <TextBlock VerticalAlignment="Center" Foreground="{StaticResource AppSurface}">
+                <TextBlock VerticalAlignment="Center" Foreground="{DynamicResource AppForeground}">
                             <Run Text="{Binding SelectedPatient.Name, RelativeSource={RelativeSource AncestorType=UserControl}, Mode=OneWay, FallbackValue='No Patient Selected'}" FontSize="20" FontWeight="Bold"/>
                             <Run Text=" | " FontSize="20" FontWeight="Bold"/>
                             <Run Text="  Age: " FontSize="14"/>
@@ -78,22 +70,23 @@
                         </TextBlock>
                     </Border>
 
-                    <Border Background="{StaticResource AppSurface}"
-                            BorderBrush="{StaticResource AppBorder}"
+            <Border Background="{DynamicResource AppAccentLight}"
+                            BorderBrush="{DynamicResource AppBorder}"
                             BorderThickness="1"
                             CornerRadius="8"
                             Padding="12,8,12,12"
                             Margin="20,0,20,8">
                         <Grid>
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="2*"/>
+                                <ColumnDefinition Width="2*"/>
+                                <ColumnDefinition Width="2*"/>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
-
-                            <StackPanel Grid.Column="0" Margin="0,0,10,0">
-                                <TextBlock Text="Temperature (°C)" FontSize="12" Foreground="{StaticResource AppForeground2}" Margin="0,0,0,5"/>
+                    <StackPanel Grid.Column="0" Margin="0,0,10,0">
+                        <TextBlock Text="Temperature (°C)" FontSize="12" Foreground="{DynamicResource AppForeground8}" Margin="0,0,0,5"/>
                                 <TextBox x:Name="TxtTemperature"
                                          Text="{Binding Temperature, UpdateSourceTrigger=PropertyChanged}"
                                          Padding="8"
@@ -101,7 +94,7 @@
                             </StackPanel>
 
                             <StackPanel Grid.Column="1" Margin="0,0,10,0">
-                                <TextBlock Text="BP Systolic" FontSize="12" Foreground="{StaticResource AppForeground2}" Margin="0,0,0,5"/>
+                        <TextBlock Text="BP Systolic" FontSize="12" Foreground="{DynamicResource AppForeground8}" Margin="0,0,0,5"/>
                                 <TextBox x:Name="TxtBPS"
                                          Text="{Binding BPSystolic, UpdateSourceTrigger=PropertyChanged}"
                                          Padding="8"
@@ -109,27 +102,40 @@
                             </StackPanel>
 
                             <StackPanel Grid.Column="2" Margin="0,0,10,0">
-                                <TextBlock Text="BP Diastolic" FontSize="12" Foreground="{StaticResource AppForeground2}" Margin="0,0,0,5"/>
+                        <TextBlock Text="BP Diastolic" FontSize="12" Foreground="{DynamicResource AppForeground8}" Margin="0,0,0,5"/>
                                 <TextBox x:Name="TxtBPD"
                                          Text="{Binding BPDiastolic, UpdateSourceTrigger=PropertyChanged}"
                                          Padding="8"
                                          FontSize="14"/>
                             </StackPanel>
 
-                            <StackPanel Grid.Column="3">
-                                <TextBlock Text="Weight (kg)" FontSize="12" Foreground="{StaticResource AppForeground2}" Margin="0,0,0,5"/>
+                            <StackPanel Grid.Column="3" Margin="0,0,10,0">
+                        <TextBlock Text="Weight (kg)" FontSize="12" Foreground="{DynamicResource AppForeground8}" Margin="0,0,0,5"/>
                                 <TextBox Text="{Binding Weight, UpdateSourceTrigger=PropertyChanged}"
-                                         Padding="8"
-                                         FontSize="14"
-                                         IsEnabled="true"
+                                         Padding="8" FontSize="14"/>
+                            </StackPanel>
+
+                            <StackPanel Grid.Column="4" Margin="0,0,10,0">
+                        <TextBlock Text="Height (cm)" FontSize="12" Foreground="{DynamicResource AppForeground8}" Margin="0,0,0,5"/>
+                                <TextBox Text="{Binding Height, UpdateSourceTrigger=PropertyChanged}"
+                                         Padding="8" FontSize="14"/>
+                            </StackPanel>
+
+                            <!-- BMI — read-only, computed by Core.Helpers.BmiCalculator -->
+                            <StackPanel Grid.Column="5">
+                                <TextBlock Text="BMI" FontSize="12" Foreground="{StaticResource AppForeground8}" Margin="0,0,0,5"/>
+                                <TextBox Text="{Binding BmiDisplay, Mode=OneWay}"
+                                         Padding="8" FontSize="13"
+                                         IsReadOnly="True"
                                          Background="{StaticResource AppSurface2}"
-                                         ToolTip="Weight tracking coming soon"/>
+                                         FontWeight="SemiBold"
+                                         ToolTip="Calculated automatically from weight and height"/>
                             </StackPanel>
                         </Grid>
 
                     </Border>
-                    <Border Background="{StaticResource AppSurface}"
-                            BorderBrush="{StaticResource AppBorder}"
+            <Border Background="{DynamicResource AppAccentLight}"
+                            BorderBrush="{DynamicResource AppBorder}"
                             BorderThickness="1"
                             CornerRadius="8"
                             Padding="12,8,12,12"
@@ -141,21 +147,21 @@
                                 <ColumnDefinition Width="*"/>
                             </Grid.ColumnDefinitions>
                             <StackPanel Grid.Column="0" Margin="0,0,10,0">
-                                <TextBlock Text="Gravida" FontSize="12" Foreground="{StaticResource AppForeground2}" Margin="0,0,0,5"/>
+                                <TextBlock Text="Gravida" FontSize="12" Foreground="{StaticResource AppForeground8}" Margin="0,0,0,5"/>
                                 <TextBox x:Name="TxtGravida"
                                          Text="{Binding Gravida, UpdateSourceTrigger=PropertyChanged}"
                                          Padding="8"
                                          FontSize="14"/>
                             </StackPanel>
                             <StackPanel Grid.Column="1" Margin="0,0,10,0">
-                                <TextBlock Text="Para" FontSize="12" Foreground="{StaticResource AppForeground2}" Margin="0,0,0,5"/>
+                                <TextBlock Text="Para" FontSize="12" Foreground="{StaticResource AppForeground8}" Margin="0,0,0,5"/>
                                 <TextBox x:Name="TxtPara"
                                          Text="{Binding Para, UpdateSourceTrigger=PropertyChanged}"
                                          Padding="8"
                                          FontSize="14"/>
                             </StackPanel>
                             <StackPanel Grid.Column="2">
-                                <TextBlock Text="Abortion" FontSize="12" Foreground="{StaticResource AppForeground2}" Margin="0,0,0,5"/>
+                                <TextBlock Text="Abortion" FontSize="12" Foreground="{StaticResource AppForeground8}" Margin="0,0,0,5"/>
                                 <TextBox x:Name="TxtAbortion"
                                          Text="{Binding Abortion, UpdateSourceTrigger=PropertyChanged}"
                                          Padding="8"
@@ -164,8 +170,36 @@
                         </Grid>
                     </Border>
 
+                    <!-- ════ Presenting Symptoms card ════ -->
+                    <Border Background="{DynamicResource AppAccentLight}" BorderBrush="{StaticResource AppBorder}" BorderThickness="1"
+                            CornerRadius="8" Padding="12,8,12,12" Margin="20,0,20,8">
+                        <StackPanel>
+                            <TextBlock Text="Presenting Symptoms" FontSize="14" FontWeight="Bold"
+                                       Foreground="{StaticResource AppForeground}" Margin="0,0,0,6"/>
+                            <TextBox x:Name="TxtPresentingSymptoms"
+                                     Text="{Binding PresentingSymptoms, UpdateSourceTrigger=PropertyChanged}"
+                                     TextWrapping="Wrap" AcceptsReturn="True"
+                                     MinHeight="60" Padding="8" FontSize="13"
+                                     VerticalScrollBarVisibility="Auto"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- ════ Diagnosis card ════ -->
+                    <Border Background="{DynamicResource AppAccentLight}" BorderBrush="{StaticResource AppBorder}" BorderThickness="1"
+                            CornerRadius="8" Padding="12,8,12,12" Margin="20,0,20,8">
+                        <StackPanel>
+                            <TextBlock Text="Diagnosis *" FontSize="14" FontWeight="Bold"
+                                       Foreground="{StaticResource AppForeground}" Margin="0,0,0,6"/>
+                            <TextBox x:Name="TxtDiagnosis"
+                                     Text="{Binding Diagnosis, UpdateSourceTrigger=PropertyChanged}"
+                                     TextWrapping="Wrap" AcceptsReturn="True"
+                                     MinHeight="60" Padding="8" FontSize="13"
+                                     VerticalScrollBarVisibility="Auto"
+                                     ToolTip="Required before saving or completing a visit"/>
+                        </StackPanel>
+                    </Border>
                     <!-- ════ Notes card ════ -->
-                    <Border Background="{StaticResource AppSurface}" BorderBrush="{StaticResource AppBorder}" BorderThickness="1"
+                    <Border Background="{DynamicResource AppAccentLight}" BorderBrush="{StaticResource AppBorder}" BorderThickness="1"
                             CornerRadius="8" Padding="12,8,12,12" Margin="20,0,20,8">
                         <StackPanel>
                             <DockPanel Margin="0,0,0,6">
@@ -264,12 +298,12 @@
 
 
                     <!-- ═══════════════════════ LAB RESULTS ═══════════════════════ -->
-                    <Border Background="{StaticResource AppSurface}"
-        BorderBrush="{StaticResource AppBorder}"
-        BorderThickness="1"
-        CornerRadius="8"
-        Padding="12,8,12,12"
-        Margin="20,0,20,8">
+            <Border Background="{DynamicResource AppAccentLight}"
+                    BorderBrush="{DynamicResource AppBorder}"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Padding="12,8,12,12"
+                    Margin="20,0,20,8">
                         <StackPanel>
 
                             <!-- Header -->
@@ -407,11 +441,11 @@
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
                                         <Border Background="{StaticResource AppLabBg}"
-                            BorderBrush="{StaticResource AppLabBorder}"
-                            BorderThickness="1"
-                            CornerRadius="6"
-                            Padding="10,8"
-                            Margin="0,0,0,6">
+                                                BorderBrush="{StaticResource AppLabBorder}"
+                                                BorderThickness="1"
+                                                CornerRadius="6"
+                                                Padding="10,8"
+                                                Margin="0,0,0,6">
                                             <StackPanel>
                                                 <!-- Top row: test name + result + remove -->
                                                 <Grid>
@@ -422,18 +456,18 @@
                                                     </Grid.ColumnDefinitions>
                                                     <StackPanel Grid.Column="0">
                                                         <TextBlock FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource AppLab}">
-                                        <Run Text="{Binding TestName}"/>
+                                                            <Run Text="{Binding TestName}"/>
                                                         </TextBlock>
                                                         <TextBlock FontSize="13" Foreground="{StaticResource AppForeground}" Margin="0,2,0,0">
-                                        <Run Text="{Binding ResultValue}" FontWeight="Bold"/>
-                                        <Run Text=" "/>
-                                        <Run Text="{Binding Unit}" Foreground="{StaticResource AppForeground2}"/>
-                                        <Run Text="  " Foreground="{StaticResource AppForeground4}"/>
-                                        <Run Text="Ref: " Foreground="{StaticResource AppForeground3}" FontSize="11"/>
-                                        <Run Text="{Binding NormalRange}" Foreground="{StaticResource AppForeground3}" FontSize="11"/>
+                                                            <Run Text="{Binding ResultValue}" FontWeight="Bold"/>
+                                                            <Run Text=" "/>
+                                                            <Run Text="{Binding Unit}" Foreground="{StaticResource AppForeground8}"/>
+                                                            <Run Text="  " Foreground="{StaticResource AppForeground4}"/>
+                                                            <Run Text="Ref: " Foreground="{StaticResource AppForeground3}" FontSize="11"/>
+                                                            <Run Text="{Binding NormalRange}" Foreground="{StaticResource AppForeground3}" FontSize="11"/>
                                                         </TextBlock>
                                                         <TextBlock Text="{Binding Notes}"
-                                               FontSize="11" Foreground="{StaticResource AppForeground2}"
+                                               FontSize="11" Foreground="{StaticResource AppForeground8}"
                                                FontStyle="Italic" Margin="0,2,0,0">
                                                             <TextBlock.Style>
                                                                 <Style TargetType="TextBlock">
@@ -450,22 +484,22 @@
                                                     <!-- Attach buttons -->
                                                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top">
                                                         <Button Content="📎 Attach"
-                                            Style="{StaticResource BtnLab}"
-                                            Margin="0,0,4,0"
-                                            Tag="{Binding}"
-                                            Click="AttachImageButton_Click"/>
-                                                        <Button Content="🖨 Scan"
-                                            Style="{StaticResource BtnLabScan}"
-                                            Tag="{Binding}"
-                                            Click="ScanImageButton_Click"/>
+                                                                Style="{StaticResource BtnLab}"
+                                                                Margin="0,0,4,0"
+                                                                Tag="{Binding}"
+                                                                Click="AttachImageButton_Click"/>
+                                                                            <Button Content="🖨 Scan"
+                                                                Style="{StaticResource BtnLabScan}"
+                                                                Tag="{Binding}"
+                                                                Click="ScanImageButton_Click"/>
                                                     </StackPanel>
                                                     <!-- Remove -->
                                                      <Button Grid.Column="2"
-                                         Content="&#xD7;"
-                                         Style="{StaticResource BtnDanger}"
-                                         VerticalAlignment="Top" Margin="4,0,0,0"
-                                         Tag="{Binding}"
-                                         Click="RemoveLabResultButton_Click"/>
+                                                             Content="&#xD7;"
+                                                             Style="{StaticResource BtnDanger}"
+                                                             VerticalAlignment="Top" Margin="4,0,0,0"
+                                                             Tag="{Binding}"
+                                                             Click="RemoveLabResultButton_Click"/>
                                                 </Grid>
 
                                                 <!-- Attachment thumbnails strip -->
@@ -495,12 +529,12 @@
                                                                     <StackPanel>
                                                                         <!-- Image thumbnail -->
                                                                         <Image Source="{Binding FilePath, Converter={StaticResource FilePathToThumbnail}}"
-                                                           Width="90" Height="70"
-                                                           Stretch="UniformToFill"
-                                                           Margin="4,4,4,0"
-                                                           Cursor="Hand"
-                                                           Tag="{Binding FilePath}"
-                                                           MouseLeftButtonUp="AttachmentImage_Click">
+                                                                               Width="90" Height="70"
+                                                                               Stretch="UniformToFill"
+                                                                               Margin="4,4,4,0"
+                                                                               Cursor="Hand"
+                                                                               Tag="{Binding FilePath}"
+                                                                               MouseLeftButtonUp="AttachmentImage_Click">
                                                                             <Image.Style>
                                                                                 <Style TargetType="Image">
                                                                                     <Setter Property="Visibility" Value="Visible"/>
@@ -514,12 +548,12 @@
                                                                         </Image>
                                                                         <!-- Non-image file icon -->
                                                                         <TextBlock Text="📄"
-                                                               FontSize="36"
-                                                               HorizontalAlignment="Center"
-                                                               Margin="4,4,4,0"
-                                                               Cursor="Hand"
-                                                               Tag="{Binding FilePath}"
-                                                               MouseLeftButtonUp="AttachmentImage_Click">
+                                                                                   FontSize="36"
+                                                                                   HorizontalAlignment="Center"
+                                                                                   Margin="4,4,4,0"
+                                                                                   Cursor="Hand"
+                                                                                   Tag="{Binding FilePath}"
+                                                                                   MouseLeftButtonUp="AttachmentImage_Click">
                                                                             <TextBlock.Style>
                                                                                 <Style TargetType="TextBlock">
                                                                                     <Setter Property="Visibility" Value="Collapsed"/>
@@ -533,18 +567,18 @@
                                                                         </TextBlock>
                                                                         <!-- File name -->
                                                                         <TextBlock Text="{Binding FileName}"
-                                                               FontSize="10" Foreground="{StaticResource AppForeground2}"
-                                                               MaxWidth="94" TextWrapping="Wrap"
-                                                               Margin="4,2,4,4"
-                                                               TextAlignment="Center"/>
+                                                                                   FontSize="10" Foreground="{StaticResource AppForeground8}"
+                                                                                   MaxWidth="94" TextWrapping="Wrap"
+                                                                                   Margin="4,2,4,4"
+                                                                                   TextAlignment="Center"/>
                                                                     </StackPanel>
                                                                     <!-- remove attachment X -->
                                                                     <Button Content="✕"
-                                                        Width="18" Height="18"
-                                                        Style="{StaticResource BtnDangerSolid}"
-                                                        HorizontalAlignment="Right" VerticalAlignment="Top"
-                                                        Tag="{Binding}"
-                                                        Click="RemoveAttachmentButton_Click"/>
+                                                                            Width="18" Height="18"
+                                                                            Style="{StaticResource BtnDangerSolid}"
+                                                                            HorizontalAlignment="Right" VerticalAlignment="Top"
+                                                                            Tag="{Binding}"
+                                                                            Click="RemoveAttachmentButton_Click"/>
                                                                 </Grid>
                                                             </Border>
                                                         </DataTemplate>
@@ -557,8 +591,8 @@
                             </ItemsControl>
 
                             <TextBlock Text="No lab results added yet."
-                   FontSize="13" Foreground="{StaticResource AppForeground4}"
-                   HorizontalAlignment="Center" Margin="0,8">
+                                       FontSize="13" Foreground="{StaticResource AppForeground4}"
+                                       HorizontalAlignment="Center" Margin="0,8">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="Visibility" Value="Collapsed"/>
@@ -576,8 +610,8 @@
                     <!-- ════════════════ END LAB RESULTS ════════════════ -->
                     
                     <!-- ═══════════════════════ PRESCRIPTION ═══════════════════════ -->
-                    <Border Background="{StaticResource AppSurface}"
-                            BorderBrush="{StaticResource AppBorder}"
+            <Border Background="{DynamicResource AppAccentLight}"
+                            BorderBrush="{DynamicResource AppBorder}"
                             BorderThickness="1"
                             CornerRadius="8"
                             Padding="12,8,12,12"
@@ -656,7 +690,7 @@
                                     <ComboBox ItemsSource="{Binding RouteOptions, Mode=OneTime}"
                                               Text="{Binding RxRoute, UpdateSourceTrigger=PropertyChanged}"
                                               IsEditable="True"
-                                              Padding="6,6" FontSize="13"/>
+                                              Padding="10,6,30,6" FontSize="13"/>
                                 </StackPanel>
 
                                 <StackPanel Grid.Column="2">
@@ -718,7 +752,7 @@
                                                         <Run Text=" "/>
                                                         <Run Text="{Binding Form}" Foreground="{StaticResource AppForeground3}" FontSize="12" FontWeight="Normal"/>
                                                     </TextBlock>
-                                                    <TextBlock FontSize="12" Foreground="{StaticResource AppForeground2}" Margin="0,2,0,0">
+                                                    <TextBlock FontSize="12" Foreground="{StaticResource AppForeground8}" Margin="0,2,0,0">
                                                         <Run Text="{Binding Dose}" FontWeight="SemiBold"/>
                                                         <Run Text=" · " Foreground="{StaticResource AppForeground4}"/>
                                                         <Run Text="{Binding Route}"/>
@@ -729,7 +763,7 @@
                                                         <Run Text=" days" Foreground="{StaticResource AppForeground3}"/>
                                                     </TextBlock>
                                                     <TextBlock Text="{Binding Instructions}"
-                                                               FontSize="11" Foreground="{StaticResource AppForeground2}"
+                                                               FontSize="11" Foreground="{StaticResource AppForeground8}"
                                                                FontStyle="Italic" Margin="0,2,0,0">
                                                         <TextBlock.Style>
                                                             <Style TargetType="TextBlock">
@@ -799,4 +833,3 @@
                 </StackPanel>
     </ScrollViewer>
 </UserControl>
-

@@ -17,22 +17,38 @@
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
-        <!-- ═══ SIDEBAR NAV ═══ -->
+        <!-- ═══ SIDEBAR NAV (4 tabs) ═══ -->
         <Grid Grid.Column="0" Background="{StaticResource AppBackground}">
             <Grid.RowDefinitions>
-                <RowDefinition Height="*"/>
+                <RowDefinition Height="2*"/>
+                <RowDefinition Height="2*"/>
+                <RowDefinition Height="2*"/>
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
+
             <RadioButton Grid.Row="0" x:Name="PatientsTabButton"
-                         Content="Patients" Tag="&#x1F464;"
+                         Content="Patients"     Tag="&#x1F464;"
                          Style="{StaticResource VerticalTabButton}"
-                         GroupName="MainTabs" IsChecked="True"
+                         GroupName="MainTabs"   IsChecked="True"
                          Checked="PatientsTab_Checked"/>
-            <RadioButton Grid.Row="1" x:Name="VisitTabButton"
-                         Content="Visit" Tag="&#x1F4CB;"
+
+            <RadioButton Grid.Row="1" x:Name="AppointmentsTabButton"
+                         Content="Appointments" Tag="&#x1F4C5;"
+                         Style="{StaticResource VerticalTabButton}"
+                         GroupName="MainTabs"
+                         Checked="AppointmentsTab_Checked"/>
+
+            <RadioButton Grid.Row="2" x:Name="VisitTabButton"
+                         Content="Visit"        Tag="&#x1F4CB;"
                          Style="{DynamicResource VerticalTabButton}"
                          GroupName="MainTabs"
                          Checked="VisitTab_Checked"/>
+
+            <RadioButton Grid.Row="3" x:Name="SettingsTabButton"
+                         Content="Settings"     Tag="&#x2699;"
+                         Style="{DynamicResource VerticalTabButton}"
+                         GroupName="MainTabs"
+                         Checked="SettingsTab_Checked"/>
         </Grid>
 
         <!-- ═══ MAIN CONTENT ═══ -->
@@ -42,29 +58,32 @@
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
 
-            <!-- Toolbar -->
-            <DockPanel Grid.Row="0" Background="{StaticResource AppSurface}" MinHeight="48" LastChildFill="False">
+            <!-- Toolbar — only shown for patient-facing tabs, hidden on Settings -->
+            <DockPanel x:Name="MainToolbar"
+                       Grid.Row="0"
+                       Background="{DynamicResource AppSurfaceDark}"
+                       MinHeight="48"
+                       LastChildFill="False">
                 <Button x:Name="AddPatientButton"
                         Content="+ Add Patient"
                         Margin="10,7"
                         Style="{StaticResource BtnPrimary}"
                         Click="AddNewPatientButton_Click"
                         DockPanel.Dock="Left"/>
-                <Button x:Name="SettingsButton"
-                        Content="&#x2699; Settings"
-                        Margin="0,7,10,7"
-                        Style="{StaticResource BtnNeutral}"
-                        Click="SettingsButton_Click"
-                        DockPanel.Dock="Right"/>
             </DockPanel>
 
-            <!-- Patients tab -->
+            <!-- ── Patients tab ── -->
             <views:PatientsTabControl x:Name="PatientsTabContent"
                                       Grid.Row="1"
                                       Visibility="Visible"
                                       StartVisitRequested="PatientsTab_StartVisitRequested"/>
 
-            <!-- Visit tab -->
+            <!-- ── Appointments tab ── -->
+            <views:AppointmentsTabControl x:Name="AppointmentsTabContent"
+                                          Grid.Row="1"
+                                          Visibility="Collapsed"/>
+
+            <!-- ── Visit tab ── -->
             <views:VisitTabControl x:Name="VisitTabContent"
                                    Grid.Row="1"
                                    Visibility="Collapsed"
@@ -74,6 +93,11 @@
                                    SaveVisitRequested="VisitTab_SaveVisitRequested"
                                    CompleteVisitRequested="VisitTab_CompleteVisitRequested"
                                    PauseVisitRequested="VisitTab_PauseVisitRequested"/>
+
+            <!-- ── Settings tab ── -->
+            <views:SettingsTabControl x:Name="SettingsTabContent"
+                                      Grid.Row="1"
+                                      Visibility="Collapsed"/>
         </Grid>
     </Grid>
 </Window>

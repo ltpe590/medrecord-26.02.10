@@ -1,4 +1,4 @@
-using Core.AI;
+﻿using Core.AI;
 using Core.Configuration;
 using Core.Data.Context;
 using Core.Http;
@@ -291,6 +291,10 @@ namespace WPF
                 services.AddScoped<IVisitService, VisitService>();
                 Debug.WriteLine("✅ IVisitService registered");
 
+                Debug.WriteLine("⏳ Registering IAppointmentService...");
+                services.AddScoped<IAppointmentService, AppointmentService>();
+                Debug.WriteLine("✅ IAppointmentService registered");
+
                 // UI
                 Debug.WriteLine("⏳ Registering UI components...");
                 
@@ -308,7 +312,9 @@ namespace WPF
                     provider.GetRequiredService<IAiService>(),
                     ()  => provider.GetRequiredService<WPF.Views.SettingsWindow>(),
                     ()  => provider.GetRequiredService<RegisterPatientViewModel>(),
-                    provider.GetRequiredService<IAppSettingsService>()
+                     provider.GetRequiredService<IAppSettingsService>(),
+                     provider.GetRequiredService<SettingsViewModel>(),
+                     provider.GetRequiredService<AppointmentsTabViewModel>()
                 ));
                 services.AddTransient<Func<RegisterPatientViewModel>>(provider =>
                     () => provider.GetRequiredService<RegisterPatientViewModel>());
@@ -329,13 +335,15 @@ namespace WPF
                     provider.GetRequiredService<SettingsViewModel>(),
                     provider.GetRequiredService<ILoggerFactory>().CreateLogger<SettingsWindow>()
                 ));
-                services.AddTransient<SettingsViewModel>(provider => new SettingsViewModel(
+                services.AddScoped<SettingsViewModel>(provider => new SettingsViewModel(
                     provider.GetRequiredService<IAppSettingsService>(),
                     provider.GetRequiredService<IConnectionService>(),
                     provider.GetRequiredService<IUserService>(),
                     provider.GetRequiredService<ILogger<SettingsViewModel>>(),
                     provider.GetRequiredService<IAiService>()
                 ));
+                services.AddTransient<SettingsTabControl>();
+                services.AddTransient<AppointmentsTabViewModel>();
                 services.AddSingleton<IVisitMapper, VisitMapper>();
                 Debug.WriteLine("✅ UI components registered");
 

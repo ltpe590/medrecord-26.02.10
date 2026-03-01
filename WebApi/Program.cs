@@ -1,4 +1,4 @@
-using Core.Configuration;
+﻿using Core.Configuration;
 using Core.Data.Context;
 using Core.Data.Seeding;
 using Core.Entities;
@@ -94,6 +94,7 @@ builder.Services.AddScoped<IVisitRepository, VisitRepository>();
 builder.Services.AddScoped<IDrugCatalogRepository, DrugCatalogRepository>();
 builder.Services.AddScoped<ILabResultsRepository, LabResultsRepository>();
 builder.Services.AddScoped<ITestCatalogRepository, TestCatalogRepository>();
+builder.Services.AddScoped<IAppointmentRepository, AppointmentRepository>();
 
 // ===== Services =====
 builder.Services.AddScoped<IAuthSession, AuthSession>();
@@ -110,6 +111,7 @@ builder.Services.AddSingleton<ClinicalCatalog>(sp => new ClinicalCatalog(sp.GetS
 builder.Services.AddScoped<IPatientMappingService, PatientMappingService>();
 builder.Services.AddScoped<IUserMappingService, UserMappingService>();
 builder.Services.AddScoped<ILabResultsMappingService, LabResultsMappingService>();
+builder.Services.AddScoped<IAppointmentService, AppointmentService>();
 
 // ===== Controllers with JSON Configuration =====
 builder.Services.AddControllers()
@@ -199,10 +201,12 @@ using (var scope = app.Services.CreateScope())
     try
     {
         await UserSeeder.SeedAdminUserAsync(db, userStore, passwordHasher);
+        await TestCatalogSeeder.SeedAsync(db);
+        await DrugCatalogSeeder.SeedAsync(db);
     }
     catch (Exception ex)
     {
-        Console.WriteLine($"[SEEDING ERROR] Failed to seed users: {ex.Message}");
+        Console.WriteLine($"[SEEDING ERROR] {ex.Message}");
     }
 }
 

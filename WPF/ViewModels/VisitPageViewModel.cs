@@ -1,4 +1,4 @@
-using Core.AI;
+﻿using Core.AI;
 using Core.DTOs;
 using WPF.Commands;
 using WPF.Helpers;
@@ -38,6 +38,8 @@ namespace WPF.ViewModels
         private bool _isAiThinking;
         private decimal _temperature;
         private int _bpSystolic, _bpDiastolic, _gravida, _para, _abortion;
+        private decimal _weight;
+        private decimal _height;
         private DateTime? _lmpDate;
         private List<LabAttachment> _imagingAttachments = new();
         private List<LabAttachment> _historyAttachments = new();
@@ -135,6 +137,30 @@ namespace WPF.ViewModels
         public string AiSuggestions { get => _aiSuggestions; set => SetProperty(ref _aiSuggestions, value); }
         public bool IsAiThinking { get => _isAiThinking; set => SetProperty(ref _isAiThinking, value); }
         public decimal Temperature { get => _temperature; set => SetProperty(ref _temperature, value); }
+
+        public decimal Weight
+        {
+            get => _weight;
+            set { SetProperty(ref _weight, value); OnPropertyChanged(nameof(BmiDisplay)); }
+        }
+
+        public decimal Height
+        {
+            get => _height;
+            set { SetProperty(ref _height, value); OnPropertyChanged(nameof(BmiDisplay)); }
+        }
+
+        /// <summary>Computed BMI display string using Core.Helpers.BmiCalculator. Read-only.</summary>
+        public string BmiDisplay
+        {
+            get
+            {
+                var bmi = Core.Helpers.BmiCalculator.Calculate(_weight, _height);
+                return bmi.HasValue
+                    ? $"{bmi.Value} — {Core.Helpers.BmiCalculator.Classify(bmi.Value)}"
+                    : string.Empty;
+            }
+        }
         public int BPSystolic { get => _bpSystolic; set => SetProperty(ref _bpSystolic, value); }
         public int BPDiastolic { get => _bpDiastolic; set => SetProperty(ref _bpDiastolic, value); }
         public int Gravida { get => _gravida; set => SetProperty(ref _gravida, value); }
@@ -331,7 +357,7 @@ namespace WPF.ViewModels
             Diagnosis = Notes = PresentingSymptoms = HistoryAndExamination =
             ImagingFindings = AiSuggestions = string.Empty;
             ImagingAttachments = new(); HistoryAttachments = new();
-            Temperature = 0; BPSystolic = 0; BPDiastolic = 0;
+            Temperature = 0; BPSystolic = 0; BPDiastolic = 0; Weight = 0; Height = 0;
             Gravida = 0; Para = 0; Abortion = 0; LMPDate = null;
             LabResults = new(); Prescriptions = new();
             ClearLabInputs(); ClearRxInputs();

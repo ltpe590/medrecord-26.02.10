@@ -12,7 +12,7 @@
             <ColumnDefinition Width="1*" MinWidth="280"/>
             <ColumnDefinition Width="3*"/>
         </Grid.ColumnDefinitions>
-        <Border Grid.Column="0" Background="{StaticResource AppSurface}" BorderBrush="{StaticResource AppBorder}" BorderThickness="0,0,1,0" Padding="10">
+        <Border Grid.Column="0" Background="{DynamicResource AppBackground9}" BorderBrush="{StaticResource AppBorder}" BorderThickness="0,0,1,0" Padding="10">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -23,7 +23,7 @@
                          Text="{Binding PatientSearchText, UpdateSourceTrigger=PropertyChanged}"
                          BorderBrush="{StaticResource AppBorderLight}" BorderThickness="1" Margin="0,0,0,10">
                     <TextBox.Style>
-                        <Style TargetType="TextBox">
+                        <Style TargetType="TextBox" BasedOn="{StaticResource {x:Type TextBox}}">
                             <Style.Triggers>
                                 <Trigger Property="Text" Value="">
                                     <Setter Property="Background">
@@ -46,47 +46,100 @@
                     <Run Text=" | Status: "/>
                     <Run Text="{Binding StatusMessage, Mode=OneWay}" Foreground="{StaticResource AppForeground2}"/>
                 </TextBlock>
-                <ListBox Grid.Row="2" x:Name="PatientListBox"
-                         ItemsSource="{Binding FilteredPatients}" SelectedItem="{Binding SelectedPatient}"
-                         SelectionChanged="PatientListBox_SelectionChanged" MouseDoubleClick="PatientListBox_MouseDoubleClick"
-                         BorderThickness="2" BorderBrush="{StaticResource AppBorder}" Background="{StaticResource AppSelected}"
-                         ScrollViewer.HorizontalScrollBarVisibility="Disabled" HorizontalContentAlignment="Right">
-                    <ListBox.ItemContainerStyle>
-                        <Style TargetType="ListBoxItem">
-                            <Setter Property="HorizontalContentAlignment" Value="Right"/>
-                        </Style>
-                    </ListBox.ItemContainerStyle>
-                    <ListBox.ItemTemplate>
-                        <DataTemplate>
-                            <Border Padding="5" Margin="5" Background="{StaticResource AppSelected}"
-                                    BorderBrush="{StaticResource AppBorder}" BorderThickness="2" HorizontalAlignment="Right">
-                                <Border.Style>
-                                    <Style TargetType="Border">
-                                        <Style.Triggers>
-                                            <DataTrigger Binding="{Binding IsPaused}" Value="True">
-                                                <Setter Property="BorderBrush" Value="{StaticResource AppWarning}"/>
-                                                <Setter Property="Background" Value="{StaticResource AppWarningLight}"/>
-                                            </DataTrigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </Border.Style>
-                                <Border.ContextMenu>
-                                    <ContextMenu>
-                                        <MenuItem Header="&#x25B6; Start Visit" FontWeight="SemiBold" Click="ContextMenu_StartVisit_Click"/>
-                                        <Separator/>
-                                        <MenuItem Header="&#x270F; Edit Patient" Click="ContextMenu_EditPatient_Click"/>
-                                        <MenuItem Header="&#x1F5D1; Delete Patient" Foreground="{StaticResource AppDanger}" Click="ContextMenu_DeletePatient_Click"/>
-                                    </ContextMenu>
-                                </Border.ContextMenu>
-                                <StackPanel Orientation="Horizontal" FlowDirection="RightToLeft" HorizontalAlignment="Right">
-                                    <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="15"/>
-                                    <TextBlock Text=" · " Foreground="{StaticResource AppForeground4}" VerticalAlignment="Center"/>
-                                    <TextBlock Text="{Binding Phone}" FlowDirection="LeftToRight" Foreground="{StaticResource AppForeground2}" FontSize="13" VerticalAlignment="Center"/>
-                                </StackPanel>
-                            </Border>
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
+                <Border Grid.Row="2" 
+        CornerRadius="12" 
+        ClipToBounds="True"
+        BorderThickness="1" 
+        BorderBrush="{DynamicResource AppBorder}" 
+        Background="{DynamicResource AppAccentLight}">
+                    <!-- Light tint background -->
+
+                    <ListBox x:Name="PatientListBox" 
+             ItemsSource="{Binding FilteredPatients}" 
+             SelectedItem="{Binding SelectedPatient}"
+             SelectionChanged="PatientListBox_SelectionChanged" 
+             MouseDoubleClick="PatientListBox_MouseDoubleClick"
+             BorderThickness="0" 
+             Background="Transparent"
+             Padding="8"
+             ScrollViewer.HorizontalScrollBarVisibility="Disabled" 
+             HorizontalContentAlignment="Stretch">
+
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem">
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                <Setter Property="Background" Value="Transparent"/>
+                                <Setter Property="Margin" Value="0,0,0,8"/>
+                                <!-- Spacing between cards -->
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="ListBoxItem">
+                                            <!-- This ContentPresenter hosts our DataTemplate below -->
+                                            <ContentPresenter />
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </ListBox.ItemContainerStyle>
+
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <!-- THE MODERN CARD -->
+                                <Border x:Name="CardBorder"
+                        Padding="12,10" 
+                        CornerRadius="8"
+                        Background="{DynamicResource AppAccentDark}" 
+                        BorderBrush="Transparent"
+                        BorderThickness="2"
+                        SnapsToDevicePixels="True">
+
+                                    <Border.Effect>
+                                        <DropShadowEffect BlurRadius="5" ShadowDepth="1" Opacity="0.2"/>
+                                    </Border.Effect>
+
+                                    <StackPanel Orientation="Horizontal" FlowDirection="RightToLeft">
+                                        <!-- Bold White Text -->
+                                        <TextBlock Text="{Binding Name}" 
+                                   FontWeight="Bold" 
+                                   FontSize="15" 
+                                   Foreground="White"/>
+
+                                        <TextBlock Text=" · " 
+                                   Foreground="#A0FFFFFF" 
+                                   VerticalAlignment="Center"/>
+
+                                        <TextBlock Text="{Binding Phone}" 
+                                   FlowDirection="LeftToRight" 
+                                   Foreground="#CCFFFFFF" 
+                                   FontSize="13" 
+                                   VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <DataTemplate.Triggers>
+                                    <!-- Hover Effect: Slight glow -->
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="CardBorder" Property="Background" Value="#2A3A5A"/>
+                                        <!-- Slightly lighter navy -->
+                                        <Setter TargetName="CardBorder" Property="Cursor" Value="Hand"/>
+                                    </Trigger>
+
+                                    <!-- Selection Effect: Blue Border Glow -->
+                                    <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True">
+                                        <Setter TargetName="CardBorder" Property="BorderBrush" Value="#0078D7"/>
+                                        <Setter TargetName="CardBorder" Property="BorderThickness" Value="2"/>
+                                    </DataTrigger>
+
+                                    <!-- Paused State Override -->
+                                    <DataTrigger Binding="{Binding IsPaused}" Value="True">
+                                        <Setter TargetName="CardBorder" Property="Background" Value="{StaticResource AppWarning}"/>
+                                    </DataTrigger>
+                                </DataTemplate.Triggers>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Border>
+
             </Grid>
         </Border>
         <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" Padding="20">
@@ -100,7 +153,7 @@
                         <TextBlock Text="Double-click a patient to start a visit" FontSize="13" Foreground="{StaticResource AppForeground4}" HorizontalAlignment="Center" Margin="0,5,0,0"/>
                     </StackPanel>
                 </Border>
-                <Border Background="{StaticResource AppSurface}" BorderBrush="{StaticResource AppBorder}" BorderThickness="1"
+                <Border Background="{DynamicResource AppAccentLight}" BorderBrush="{StaticResource AppBorder}" BorderThickness="1"
                         CornerRadius="8" Padding="20" Margin="0,0,0,20"
                         Visibility="{Binding HasSelectedPatient, Converter={StaticResource BoolToVisibilityConverter}}">
                     <StackPanel>
@@ -144,7 +197,7 @@
                         </Grid>
                     </StackPanel>
                 </Border>
-                <Border Background="{StaticResource AppSurface}" BorderBrush="{StaticResource AppBorder}" BorderThickness="1"
+                <Border Background="{DynamicResource AppAccentLight}" BorderBrush="{StaticResource AppBorder}" BorderThickness="1"
                         CornerRadius="8" Padding="20"
                         Visibility="{Binding HasSelectedPatient, Converter={StaticResource BoolToVisibilityConverter}}">
                     <StackPanel>

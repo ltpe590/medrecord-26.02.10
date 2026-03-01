@@ -97,12 +97,61 @@ namespace WPF.Services
                 // Background / surface / foreground
                 if (darkMode)
                 {
-                    res["AppBackground"]    = new SolidColorBrush(Color.FromRgb(18,  18,  18));
-                    res["AppSurface"]       = new SolidColorBrush(Color.FromRgb(30,  30,  30));
-                    res["AppSurface2"]      = new SolidColorBrush(Color.FromRgb(42,  42,  42));
-                    res["AppForeground"]    = new SolidColorBrush(Color.FromRgb(240, 240, 240));
-                    res["AppForeground2"]   = new SolidColorBrush(Color.FromRgb(170, 170, 170));
-                    res["AppBorder"]        = new SolidColorBrush(Color.FromRgb(55,  55,  55));
+                    // ── Surfaces (navy-slate, reduced contrast) ──────────────────
+                    res["AppBackground"]  = new SolidColorBrush(Color.FromRgb(28,  32,  48));  // #1C2030
+                    res["AppSurface"]     = new SolidColorBrush(Color.FromRgb(37,  42,  58));  // #252A3A
+                    res["AppSurface2"]    = new SolidColorBrush(Color.FromRgb(46,  51,  71));  // #2E3347
+                    res["AppSurface3"]    = new SolidColorBrush(Color.FromRgb(54,  60,  82));  // #363C52
+
+                    // ── Text (soft, not glaring white) ──────────────────────────
+                    res["AppForeground"]  = new SolidColorBrush(Color.FromRgb(197, 204, 219)); // #C5CCDB
+                    res["AppForeground2"] = new SolidColorBrush(Color.FromRgb(136, 145, 166)); // #8891A6
+                    res["AppForeground3"] = new SolidColorBrush(Color.FromRgb(99,  107, 128)); // #636B80
+                    res["AppForeground4"] = new SolidColorBrush(Color.FromRgb(74,  82,  104)); // #4A5268
+
+                    // ── Borders ─────────────────────────────────────────────────
+                    res["AppBorder"]      = new SolidColorBrush(Color.FromRgb(60,  66,  96));  // #3C4260
+                    res["AppBorderLight"] = new SolidColorBrush(Color.FromRgb(74,  82,  104)); // #4A5268
+
+                    // ── Selection ───────────────────────────────────────────────
+                    res["AppSelected"]    = new SolidColorBrush(Color.FromArgb(55,
+                        accent.Color.R, accent.Color.G, accent.Color.B));
+
+                    // ── Semantic: Success ────────────────────────────────────────
+                    res["AppSuccess"]       = new SolidColorBrush(Color.FromRgb(56,  142, 60));
+                    res["AppSuccessBright"] = new SolidColorBrush(Color.FromRgb(67,  160, 71));
+                    res["AppSuccessLight"]  = new SolidColorBrush(Color.FromRgb(22,  46,  28));
+
+                    // ── Semantic: Warning ────────────────────────────────────────
+                    res["AppWarning"]      = new SolidColorBrush(Color.FromRgb(245, 124, 0));
+                    res["AppWarningLight"] = new SolidColorBrush(Color.FromRgb(48,  34,  8));
+
+                    // ── Semantic: Danger ─────────────────────────────────────────
+                    res["AppDanger"]      = new SolidColorBrush(Color.FromRgb(229, 57,  53));
+                    res["AppDangerLight"] = new SolidColorBrush(Color.FromRgb(48,  16,  16));
+
+                    // ── Neutral / Slate ──────────────────────────────────────────
+                    res["AppNeutral"] = new SolidColorBrush(Color.FromRgb(108, 117, 125));
+                    res["AppSlate"]   = new SolidColorBrush(Color.FromRgb(69,  90,  100));
+
+                    // ── Lab (teal) ───────────────────────────────────────────────
+                    res["AppLab"]       = new SolidColorBrush(Color.FromRgb(0,   150, 136)); // brighter in dark
+                    res["AppLabAction"] = new SolidColorBrush(Color.FromRgb(0,   151, 167));
+                    res["AppLabScan"]   = new SolidColorBrush(Color.FromRgb(0,   121, 107));
+                    res["AppLabLight"]  = new SolidColorBrush(Color.FromRgb(16,  42,  44));
+                    res["AppLabBg"]     = new SolidColorBrush(Color.FromRgb(14,  38,  46));
+                    res["AppLabBorder"] = new SolidColorBrush(Color.FromRgb(0,   77,  88));
+                    res["AppLabNote"]   = new SolidColorBrush(Color.FromRgb(40,  38,  18));
+
+                    // ── AI / Purple ──────────────────────────────────────────────
+                    res["AppAi"]       = new SolidColorBrush(Color.FromRgb(149, 60,  185)); // lighter purple
+                    res["AppAiLight"]  = new SolidColorBrush(Color.FromRgb(36,  18,  52));
+                    res["AppAiLighter"]= new SolidColorBrush(Color.FromRgb(32,  22,  48));
+                    res["AppAiBorder"] = new SolidColorBrush(Color.FromRgb(88,  40,  120));
+                    res["AppAiText"]   = new SolidColorBrush(Color.FromRgb(200, 140, 220)); // soft lavender
+
+                    // ── Rx ───────────────────────────────────────────────────────
+                    res["AppRx"] = new SolidColorBrush(Color.FromRgb(2, 139, 209));
                 }
                 else
                 {
